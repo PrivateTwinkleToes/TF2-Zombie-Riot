@@ -87,7 +87,7 @@ methodmap Defanda < CClotBody
 	
 	public Defanda(int client, float vecPos[3], float vecAng[3], bool ally)
 	{
-		Defanda npc = view_as<Defanda>(CClotBody(vecPos, vecAng, "models/player/medic.mdl", "1.0", "1500", ally));
+		Defanda npc = view_as<Defanda>(CClotBody(vecPos, vecAng, "models/player/medic.mdl", "1.0", "1250", ally));
 		
 		i_NpcInternalId[npc.index] = EXPIDONSA_DEFANDA;
 		i_NpcWeight[npc.index] = 1;
@@ -245,9 +245,9 @@ void DefandaSelfDefense(Defanda npc, float gameTime, int target, float distance)
 				
 				if(IsValidEnemy(npc.index, target))
 				{
-					float damageDealt = 50.0;
+					float damageDealt = 45.0;
 					if(ShouldNpcDealBonusDamage(target))
-						damageDealt *= 4.0;
+						damageDealt *= 3.5;
 
 
 					SDKHooks_TakeDamage(target, npc.index, npc.index, damageDealt, DMG_CLUB, -1, _, vecHit);
@@ -257,6 +257,21 @@ void DefandaSelfDefense(Defanda npc, float gameTime, int target, float distance)
 					// Hit sound
 					npc.PlayMeleeHitSound();
 					//on hit, we heal all allies around us
+					if(target <= MaxClients)
+					{
+						if (IsInvuln(target))
+						{
+							b_ExpidonsaWasAttackingNonPlayer = true;
+						}
+						else
+						{
+							b_ExpidonsaWasAttackingNonPlayer = false;
+						}
+					}
+					else
+					{
+						b_ExpidonsaWasAttackingNonPlayer = true;
+					}
 					Explode_Logic_Custom(0.0,
 					npc.index,
 					npc.index,
@@ -266,7 +281,7 @@ void DefandaSelfDefense(Defanda npc, float gameTime, int target, float distance)
 					_,
 					_,
 					true,
-					99,
+					5,
 					false,
 					_,
 					DefandaAllyHeal);
@@ -350,16 +365,18 @@ void DefandaAllyHeal(int entity, int victim, float damage, int weapon)
 	{
 		if (!b_IsAlliedNpc[victim] && !i_IsABuilding[victim] && victim > MaxClients)
 		{
-			DefandaAllyHealInternal(victim, 250.0);
+			DefandaAllyHealInternal(victim, 100.0);
 		}
 	}
 }
 
 void DefandaAllyHealInternal(int victim, float heal)
 {
+	if(b_ExpidonsaWasAttackingNonPlayer)
+		heal *= 0.5;
 	HealEntityViaFloat(victim, heal, 1.0);
 	float ProjLoc[3];
 	GetEntPropVector(victim, Prop_Data, "m_vecAbsOrigin", ProjLoc);
 	ProjLoc[2] += 100.0;
-	ParticleEffectAt(ProjLoc, "healthgained_blu", 0.1);
+	TE_Particle("healthgained_blu", ProjLoc, NULL_VECTOR, NULL_VECTOR, _, _, _, _, _, _, _, _, _, _, 0.0);
 }

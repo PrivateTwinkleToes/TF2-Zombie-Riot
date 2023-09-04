@@ -313,7 +313,7 @@ stock bool KvJumpToKeySymbol2(KeyValues kv, int id)
 	return false;
 }
 
-stock int GetClientPointVisible(int iClient, float flDistance = 100.0, bool ignore_allied_npc = false, bool mask_shot = false, float vecEndOrigin[3] = {0.0, 0.0, 0.0})
+stock int GetClientPointVisible(int iClient, float flDistance = 100.0, bool ignore_allied_npc = false, bool mask_shot = false, float vecEndOrigin[3] = {0.0, 0.0, 0.0}, int repeatsretry = 2)
 {
 	float vecOrigin[3], vecAngles[3];
 	GetClientEyePosition(iClient, vecOrigin);
@@ -334,20 +334,42 @@ stock int GetClientPointVisible(int iClient, float flDistance = 100.0, bool igno
 		flags |= MASK_SHOT;
 	}
 
-	if(!ignore_allied_npc)
+	int iReturn = -1;
+	int iHit;
+	//loop upto twice
+	if(repeatsretry == 1)
 	{
-		hTrace = TR_TraceRayFilterEx(vecOrigin, vecAngles, ( flags ), RayType_Infinite, Trace_DontHitEntityOrPlayer, iClient);
-		TR_GetEndPosition(vecEndOrigin, hTrace);
+		i_PreviousInteractedEntityDo[iClient] = false;
 	}
 	else
 	{
-		hTrace = TR_TraceRayFilterEx(vecOrigin, vecAngles, ( flags ), RayType_Infinite, Trace_DontHitEntityOrPlayerOrAlliedNpc, iClient);
-		TR_GetEndPosition(vecEndOrigin, hTrace);		
+		i_PreviousInteractedEntityDo[iClient] = true;
 	}
 
-	int iReturn = -1;
-	int iHit = TR_GetEntityIndex(hTrace);
-	
+	for(int repeat; repeat < repeatsretry; repeat++)
+	{
+		if(!ignore_allied_npc)
+		{
+			hTrace = TR_TraceRayFilterEx(vecOrigin, vecAngles, ( flags ), RayType_Infinite, Trace_DontHitEntityOrPlayer, iClient);
+			TR_GetEndPosition(vecEndOrigin, hTrace);
+		}
+		else
+		{
+			hTrace = TR_TraceRayFilterEx(vecOrigin, vecAngles, ( flags ), RayType_Infinite, Trace_DontHitEntityOrPlayerOrAlliedNpc, iClient);
+			TR_GetEndPosition(vecEndOrigin, hTrace);		
+		}
+		iHit = TR_GetEntityIndex(hTrace);
+		if(iHit > 0)
+		{
+			break;
+		}
+		if(repeat == 0)
+		{
+			delete hTrace;
+			i_PreviousInteractedEntity[iClient] = 0; //didnt find any
+		}
+	}
+	i_PreviousInteractedEntity[iClient] = iHit;
 	if (TR_DidHit(hTrace) && iHit != iClient && GetVectorDistance(vecOrigin, vecEndOrigin, true) < (flDistance * flDistance))
 		iReturn = iHit;
 	
@@ -361,6 +383,8 @@ stock int GetClientPointVisibleRevive(int iClient, float flDistance = 100.0)
 	GetClientEyePosition(iClient, vecOrigin);
 	GetClientEyeAngles(iClient, vecAngles);
 	
+	i_PreviousInteractedEntity[iClient] = 0; //didnt find any
+
 	Handle hTrace = TR_TraceRayFilterEx(vecOrigin, vecAngles, ( MASK_SOLID | CONTENTS_SOLID ), RayType_Infinite, Trace_DontHitAlivePlayer, iClient);
 	TR_GetEndPosition(vecEndOrigin, hTrace);
 	
@@ -1379,23 +1403,26 @@ public bool Trace_DontHitEntityOrPlayerOrAlliedNpc(int entity, int mask, any dat
 #if defined ZR
 		if(entity != data) //make sure that they are not dead, if they are then just ignore them/give special shit
 		{
-			int Building_Index = EntRefToEntIndex(Building_Mounted[entity]);
-			if(dieingstate[entity] > 0)
+			if(i_PreviousInteractedEntity[data] != entity || !i_PreviousInteractedEntityDo[data])
 			{
-				if(!b_LeftForDead[entity])
+				int Building_Index = EntRefToEntIndex(Building_Mounted[entity]);
+				if(dieingstate[entity] > 0)
 				{
-					return entity!=data;
+					if(!b_LeftForDead[entity])
+					{
+						return entity!=data;
+					}
+					else
+					{
+						return false;	
+					}
 				}
-				else
+				else if(Building_Index == 0 || !IsValidEntity(Building_Index))
 				{
-					return false;	
+					return false;
 				}
+				return Building_Index!=data;
 			}
-			else if(Building_Index == 0 || !IsValidEntity(Building_Index))
-			{
-				return false;
-			}
-			return Building_Index!=data;
 		}
 #else
 		return false;
@@ -1403,6 +1430,10 @@ public bool Trace_DontHitEntityOrPlayerOrAlliedNpc(int entity, int mask, any dat
 		
 	}
 	if(entity > MaxClients && b_IsAlliedNpc[entity])
+	{
+		return false;
+	}
+	if(i_PreviousInteractedEntity[data] == entity && i_PreviousInteractedEntityDo[data])
 	{
 		return false;
 	}
@@ -1417,23 +1448,26 @@ public bool Trace_DontHitEntityOrPlayer(int entity, int mask, any data)
 #if defined ZR
 		if(entity != data) //make sure that they are not dead, if they are then just ignore them/give special shit
 		{
-			int Building_Index = EntRefToEntIndex(Building_Mounted[entity]);
-			if(dieingstate[entity] > 0)
+			if(i_PreviousInteractedEntity[data] != entity || !i_PreviousInteractedEntityDo[data])
 			{
-				if(!b_LeftForDead[entity])
+				int Building_Index = EntRefToEntIndex(Building_Mounted[entity]);
+				if(dieingstate[entity] > 0)
 				{
-					return entity!=data;
+					if(!b_LeftForDead[entity])
+					{
+						return entity!=data;
+					}
+					else
+					{
+						return false;	
+					}
 				}
-				else
+				else if(Building_Index == 0 || !IsValidEntity(Building_Index))
 				{
-					return false;	
+					return false;
 				}
+				return Building_Index!=data;
 			}
-			else if(Building_Index == 0 || !IsValidEntity(Building_Index))
-			{
-				return false;
-			}
-			return Building_Index!=data;
 		}
 #else
 		return false;
@@ -1447,16 +1481,25 @@ public bool Trace_DontHitEntityOrPlayer(int entity, int mask, any data)
 			int entityfrombrush = BrushToEntity(entity);
 			if(entityfrombrush != -1)
 			{
-				return entityfrombrush!=data;
+				if(i_PreviousInteractedEntity[data] != entityfrombrush || !i_PreviousInteractedEntityDo[data])
+				{
+					return entityfrombrush!=data;
+				}
 			}
 		}
 		if(Textstore_CanSeeItem(entity, data))
 		{
-			return entity!=data;
+			if(i_PreviousInteractedEntity[data] != entity || !i_PreviousInteractedEntityDo[data])
+			{
+				return entity!=data;
+			}
 		}
 		else if(b_IsAlliedNpc[entity])
 		{
-			return entity!=data;
+			if(i_PreviousInteractedEntity[data] != entity || !i_PreviousInteractedEntityDo[data])
+			{
+				return entity!=data;
+			}
 		}
 		else
 		{
@@ -1464,6 +1507,10 @@ public bool Trace_DontHitEntityOrPlayer(int entity, int mask, any data)
 		}
 	}
 #endif	
+	if(i_PreviousInteractedEntity[data] == entity && i_PreviousInteractedEntityDo[data])
+	{
+		return false;
+	}
 	return entity!=data;
 }
 
@@ -2267,7 +2314,7 @@ public void CreateEarthquake(float position[3], float duration, float radius, fl
 }
 
 
-public bool TF2U_GetWearable(int client, int &entity, int &index)
+bool TF2U_GetWearable(int client, int &entity, int &index, const char[] classname = "tf_wear*")
 {
 	/*#if defined __nosoop_tf2_utils_included
 	if(Loaded)
@@ -2288,7 +2335,7 @@ public bool TF2U_GetWearable(int client, int &entity, int &index)
 		
 		if(index > -2)
 		{
-			while((index=FindEntityByClassname(index, "tf_wear*")) != -1)
+			while((index=FindEntityByClassname(index, classname)) != -1)
 			{
 				if(GetEntPropEnt(index, Prop_Send, "m_hOwnerEntity") == client)
 				{
@@ -2849,7 +2896,7 @@ Function FunctionToCallBeforeHit = INVALID_FUNCTION)
 	static float distance[MAXENTITIES];
 	static float VicPos[MAXENTITIES][3];
 
-	if(FromBlueNpc) //Npcs do not have damage falloff, dodge.
+	if(FromBlueNpc && maxtargetshit == 10) //Npcs do not have damage falloff, dodge.
 	{
 		maxtargetshit = 20; //we do not care.
 	}
@@ -3036,7 +3083,7 @@ public bool TraceEntityEnumerator_EnumerateEntitiesInRange(int entity, int filte
 	return true;
 }
 
-stock void DisplayCritAboveNpc(int victim = -1, int client, bool sound, float position[3] = {0.0,0.0,0.0}, int ParticleIndex = -1)
+stock void DisplayCritAboveNpc(int victim = -1, int client, bool sound, float position[3] = {0.0,0.0,0.0}, int ParticleIndex = -1, bool minicrit = false)
 {
 	float chargerPos[3];
 	if(victim != -1)
@@ -3058,30 +3105,57 @@ stock void DisplayCritAboveNpc(int victim = -1, int client, bool sound, float po
 
 	if(sound)
 	{
-		switch(GetRandomInt(1,5))
+		if(minicrit)
 		{
-			case 1:
+			switch(GetRandomInt(1,5))
 			{
-				EmitSoundToClient(client, "player/crit_hit.wav", _, _, 80, _, 0.8, 100);
-			}
-			case 2:
-			{
-				EmitSoundToClient(client, "player/crit_hit2.wav", _, _, 80, _, 0.8, 100);
-			}
-			case 3:
-			{
-				EmitSoundToClient(client, "player/crit_hit3.wav", _, _, 80, _, 0.8, 100);
-			}
-			case 4:
-			{
-				EmitSoundToClient(client, "player/crit_hit4.wav", _, _, 80, _, 0.8, 100);
-			}
-			case 5:
-			{
-				EmitSoundToClient(client, "player/crit_hit5.wav", _, _, 80, _, 0.8, 100);
-			}
-			
+				case 1:
+				{
+					EmitSoundToClient(client, "player/crit_hit_mini.wav", _, _, 80, _, 0.8, 100);
+				}
+				case 2:
+				{
+					EmitSoundToClient(client, "player/crit_hit_mini2.wav", _, _, 80, _, 0.8, 100);
+				}
+				case 3:
+				{
+					EmitSoundToClient(client, "player/crit_hit_mini3.wav", _, _, 80, _, 0.8, 100);
+				}
+				case 4:
+				{
+					EmitSoundToClient(client, "player/crit_hit_mini4.wav", _, _, 80, _, 0.8, 100);
+				}
+				
+			}			
 		}
+		else
+		{
+			switch(GetRandomInt(1,5))
+			{
+				case 1:
+				{
+					EmitSoundToClient(client, "player/crit_hit.wav", _, _, 80, _, 0.8, 100);
+				}
+				case 2:
+				{
+					EmitSoundToClient(client, "player/crit_hit2.wav", _, _, 80, _, 0.8, 100);
+				}
+				case 3:
+				{
+					EmitSoundToClient(client, "player/crit_hit3.wav", _, _, 80, _, 0.8, 100);
+				}
+				case 4:
+				{
+					EmitSoundToClient(client, "player/crit_hit4.wav", _, _, 80, _, 0.8, 100);
+				}
+				case 5:
+				{
+					EmitSoundToClient(client, "player/crit_hit5.wav", _, _, 80, _, 0.8, 100);
+				}
+				
+			}		
+		}
+
 	}
 	if(ParticleIndex != -1)
 	{
@@ -3090,8 +3164,16 @@ stock void DisplayCritAboveNpc(int victim = -1, int client, bool sound, float po
 	}
 	else
 	{
-		TE_ParticleInt(g_particleCritText, chargerPos);
-		TE_SendToClient(client);		
+		if(minicrit)
+		{
+			TE_ParticleInt(g_particleMiniCritText, chargerPos);
+			TE_SendToClient(client);
+		}
+		else
+		{
+			TE_ParticleInt(g_particleCritText, chargerPos);
+			TE_SendToClient(client);	
+		}	
 	}
 }
 
@@ -3865,6 +3947,12 @@ stock int ConnectWithBeamClient(int iEnt, int iEnt2, int iRed=255, int iGreen=25
 	SetVariantFloat(32.0);
 	AcceptEntityInput(iBeam, "Amplitude");
 	AcceptEntityInput(iBeam, "TurnOn");
+
+	SetVariantInt(0);
+	AcceptEntityInput(iBeam, "TouchType");
+	//its delayed by a frame to avoid it not rendering at all.
+//	RequestFrames(ApplyBeamThinkRemoval, 15, EntIndexToEntRef(iBeam));
+
 	return iBeam;
 }
 

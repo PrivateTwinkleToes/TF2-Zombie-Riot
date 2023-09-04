@@ -75,7 +75,7 @@ methodmap EnegaKapus < CClotBody
 	
 	public EnegaKapus(int client, float vecPos[3], float vecAng[3], bool ally)
 	{
-		EnegaKapus npc = view_as<EnegaKapus>(CClotBody(vecPos, vecAng, "models/player/engineer.mdl", "1.0", "2000", ally));
+		EnegaKapus npc = view_as<EnegaKapus>(CClotBody(vecPos, vecAng, "models/player/engineer.mdl", "1.0", "1500", ally));
 		
 		i_NpcInternalId[npc.index] = EXPIDONSA_ENEGAKAPUS;
 		i_NpcWeight[npc.index] = 1;
@@ -102,7 +102,7 @@ methodmap EnegaKapus < CClotBody
 		npc.m_flGetClosestTargetTime = 0.0;
 		npc.StartPathing();
 		npc.m_flSpeed = 200.0;
-		fl_RangedArmor[npc.index] = 0.25;
+		fl_RangedArmor[npc.index] = 0.5;
 		
 		int skin = 1;
 		SetEntProp(npc.index, Prop_Send, "m_nSkin", skin);
@@ -120,7 +120,9 @@ methodmap EnegaKapus < CClotBody
 		SetVariantString("1.0");
 		AcceptEntityInput(npc.m_iWearable3, "SetModelScale");
 
-		npc.m_iWearable4 = npc.SpawnShield(0.0, "models/props_mvm/mvm_player_shield.mdl",80.0);
+		npc.m_iWearable4 = npc.SpawnShield(0.0, "models/props_mvm/mvm_player_shield.mdl",40.0);
+		SetVariantString("0.70");
+		AcceptEntityInput(npc.m_iWearable4, "SetModelScale");
 		
 		return npc;
 	}
@@ -136,7 +138,11 @@ public void EnegaKapus_ClotThink(int iNPC)
 	}
 	npc.m_flNextDelayTime = GetGameTime(npc.index) + DEFAULT_UPDATE_DELAY_FLOAT;
 	npc.Update();
-
+	if(NpcStats_IsEnemySilenced(npc.index))
+	{
+		if(IsValidEntity(npc.m_iWearable4))
+			RemoveEntity(npc.m_iWearable4);
+	}
 	if(npc.m_blPlayHurtAnimation)
 	{
 		npc.AddGesture("ACT_MP_GESTURE_FLINCH_CHEST", false);
@@ -245,7 +251,7 @@ void EnegaKapusSelfDefense(EnegaKapus npc, float gameTime, int target, float dis
 
 					if(IsValidEnemy(npc.index, target))
 					{
-						float damageDealt = 15.0;
+						float damageDealt = 7.5;
 						if(ShouldNpcDealBonusDamage(target))
 							damageDealt *= 3.0;
 

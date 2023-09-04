@@ -105,6 +105,8 @@ static int FogEntity = INVALID_ENT_REFERENCE;
 static int Gave_Ammo_Supply;
 static int VotedFor[MAXTF2PLAYERS];
 static float VoteEndTime;
+static float f_ZombieAntiDelaySpeedUp;
+static int i_ZombieAntiDelaySpeedUp;
 
 static char LastWaveWas[64];
 static int WaveGiftItem;
@@ -520,6 +522,7 @@ void Waves_SetupWaves(KeyValues kv, bool start)
 	f_ExtraDropChanceRarity = kv.GetFloat("gift_drop_chance_multiplier", 0.5);
 	kv.GetString("complete_item", buffer, sizeof(buffer));
 	WaveGiftItem = buffer[0] ? Items_NameToId(buffer) : -1;
+	bool autoCash = view_as<bool>(kv.GetNum("auto_raid_cash"));
 	
 	Enemy enemy;
 	Wave wave;
@@ -596,6 +599,8 @@ void Waves_SetupWaves(KeyValues kv, bool start)
 			round.FogDesnity = kv.GetFloat("fogmaxdensity");
 		}
 
+		int nonBosses;
+
 		round.Waves = new ArrayList(sizeof(Wave));
 		if(kv.GotoFirstSubKey())
 		{
@@ -632,6 +637,9 @@ void Waves_SetupWaves(KeyValues kv, bool start)
 						
 						kv.GetString("data", enemy.Data, sizeof(enemy.Data));
 						kv.GetString("spawn", enemy.Spawn, sizeof(enemy.Spawn));
+
+						if(!enemy.Credits)
+							nonBosses++;
 						
 						wave.EnemyData = enemy;
 						round.Waves.PushArray(wave);
@@ -640,6 +648,30 @@ void Waves_SetupWaves(KeyValues kv, bool start)
 			} while(kv.GotoNextKey());
 			
 			kv.GoBack();
+		}
+
+		if(autoCash && nonBosses)
+		{
+			int length = round.Waves.Length;
+			if(length)
+			{
+				float fcash = float(round.Cash) / float(nonBosses);
+				for(int i; i < length; i++)
+				{
+					round.Waves.GetArray(i, wave);
+					if(wave.EnemyData.Credits)
+						continue;
+
+					float count = float(wave.Count);
+					if(count < 1.0)
+						count = 1.0;
+					
+					wave.EnemyData.Credits = fcash / count;
+					round.Waves.SetArray(i, wave);
+				}
+
+				round.Cash = 0;
+			}
 		}
 		
 		Rounds.PushArray(round);
@@ -833,6 +865,10 @@ public Action Waves_EndVote(Handle timer, float time)
 					PrintToChatAll("%t: %s","Difficulty set to", vote.Name);
 
 					Queue_DifficultyVoteEnded();
+					Native_OnDifficultySet(highest);
+					
+					if(highest > 3)
+						highest = 3;
 					
 					Format(WhatDifficultySetting, sizeof(WhatDifficultySetting), "FireUser%d", highest + 1);
 					ExcuteRelay("zr_waveselected", WhatDifficultySetting);
@@ -867,6 +903,8 @@ void Waves_Progress()
 {
 	if(InSetup || !Rounds || CvarNoRoundStart.BoolValue || Cooldown > GetGameTime())
 		return;
+
+	Cooldown = GetGameTime();
 		
 	delete WaveTimer;
 	
@@ -1016,14 +1054,14 @@ void Waves_Progress()
 					if(GetClientTeam(client_Penalise)!=2)
 					{
 						SetGlobalTransTarget(client_Penalise);
-						PrintToChat(client_Penalise, "%t", "You have only gained 80%% due to not being in-game");
-						CashSpent[client_Penalise] += RoundToCeil(float(round.Cash) * 0.20);
+						PrintToChat(client_Penalise, "%t", "You have only gained 90%% due to not being in-game");
+						CashSpent[client_Penalise] += RoundToCeil(float(round.Cash) * 0.10);
 					}
 					else if (TeutonType[client_Penalise] == TEUTON_WAITING)
 					{
 						SetGlobalTransTarget(client_Penalise);
-						PrintToChat(client_Penalise, "%t", "You have only gained 90 %% due to being a non-player player, but still helping");
-						CashSpent[client_Penalise] += RoundToCeil(float(round.Cash) * 0.10);
+						PrintToChat(client_Penalise, "%t", "You have only gained 95 %% due to being a non-player player, but still helping");
+						CashSpent[client_Penalise] += RoundToCeil(float(round.Cash) * 0.05);
 					}
 				}
 			}
@@ -1162,10 +1200,10 @@ void Waves_Progress()
 				}
 			}
 			
-			if(Zombies_Currently_Still_Ongoing > 0 && (Zombies_Currently_Still_Ongoing - Zombies_alive_still) > 0)
-			{
-				CPrintToChatAll("{crimson}%d zombies have been wasted...", Zombies_Currently_Still_Ongoing - Zombies_alive_still);
-			}
+	//		if(Zombies_Currently_Still_Ongoing > 0 && (Zombies_Currently_Still_Ongoing - Zombies_alive_still) > 0)
+	//		{
+	//			CPrintToChatAll("{crimson}%d zombies have been wasted...", Zombies_Currently_Still_Ongoing - Zombies_alive_still);
+	//		}
 			Zombies_Currently_Still_Ongoing = 0;
 			
 			Zombies_Currently_Still_Ongoing = Zombies_alive_still;
@@ -1537,10 +1575,15 @@ void Waves_Progress()
 	if(CurrentRound == 0 && !Rogue_Mode())
 	{
 		if(StartCash < 1500)
-			Store_RemoveSellValue();
+		{
+			for(int client=1; client<=MaxClients; client++)
+			{
+				GrantCreditsBack(client);
+			}
+		}
 		
 		Ammo_Count_Ready = 8;
-		if(StartCash < 1500)
+		/*if(StartCash < 1500)
 		{
 			for(int client=1; client<=MaxClients; client++)
 			{
@@ -1555,18 +1598,33 @@ void Waves_Progress()
 			}
 
 			CurrentCash = 0;
-		}
+		}*/
 	}
+	WaveStart_SubWaveStart();
 	if(CurrentWave == 0)
 	{
 		Renable_Powerups();
 		CheckIfAloneOnServer();
 		Ammo_Count_Ready += 1;
+		for (int target = 1; target <= MaxClients; target++)
+		{
+			if(i_CurrentEquippedPerk[target] == 7) //recycle gives extra
+			{
+				Ammo_Count_Used[target] -= 1;
+			}
+		}
 	}
 	else if (Gave_Ammo_Supply > 2)
 	{
 		Ammo_Count_Ready += 1;
 		Gave_Ammo_Supply = 0;
+		for (int target = 1; target <= MaxClients; target++)
+		{
+			if(i_CurrentEquippedPerk[target] == 7) //recycle gives extra
+			{
+				Ammo_Count_Used[target] -= 1;
+			}
+		}
 	}	
 	else
 	{
@@ -1704,4 +1762,87 @@ void WaveEndLogicExtra()
 	SeaFounder_ClearnNethersea();
 	M3_AbilitiesWaveEnd();
 	Specter_AbilitiesWaveEnd();	
+}
+
+void WaveStart_SubWaveStart()
+{
+	f_ZombieAntiDelaySpeedUp = Cooldown + 600.0;
+	i_ZombieAntiDelaySpeedUp = 0; //warning off
+}
+
+void Zombie_Delay_Warning()
+{
+	if(InSetup)
+		return;
+
+	switch(i_ZombieAntiDelaySpeedUp)
+	{
+		case 0:
+		{
+			if(f_ZombieAntiDelaySpeedUp < GetGameTime())
+			{
+				i_ZombieAntiDelaySpeedUp = 1;
+				CPrintToChatAll("{crimson}[Zombie-Riot] Enemies grow restless...");
+			}
+		}
+		case 1:
+		{
+			if(f_ZombieAntiDelaySpeedUp < GetGameTime() + 30.0)
+			{
+				i_ZombieAntiDelaySpeedUp = 2;
+				CPrintToChatAll("{crimson}[Zombie-Riot] Enemies grow annoyed and go faster...");
+			}
+		}
+		case 2:
+		{
+			if(f_ZombieAntiDelaySpeedUp < GetGameTime() + 60.0)
+			{
+				i_ZombieAntiDelaySpeedUp = 3;
+				CPrintToChatAll("{crimson}[Zombie-Riot] Enemies grow furious and become even faster...");
+			}
+		}
+		case 3:
+		{
+			if(f_ZombieAntiDelaySpeedUp < GetGameTime() + 90.0)
+			{
+				i_ZombieAntiDelaySpeedUp = 4;
+				CPrintToChatAll("{crimson}[Zombie-Riot] Enemies become pissed off and gain super speed...");
+			}
+		}
+		case 4:
+		{
+			if(f_ZombieAntiDelaySpeedUp < GetGameTime() + 120.0)
+			{
+				i_ZombieAntiDelaySpeedUp = 5;
+				CPrintToChatAll("{crimson}[Zombie-Riot] Enemies become infuriated and will reach you...");
+			}
+		}
+	}
+}
+
+float Zombie_DelayExtraSpeed()
+{
+	if(InSetup)
+		return 1.0;
+	
+	switch(i_ZombieAntiDelaySpeedUp)
+	{
+		case 2:
+		{
+			return 1.15;
+		}
+		case 3:
+		{
+			return 1.35;
+		}
+		case 4:
+		{
+			return 1.5;
+		}
+		case 5:
+		{
+			return 1.75;
+		}
+	}
+	return 1.0;
 }

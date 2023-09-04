@@ -219,6 +219,8 @@ int i_BackstabHealTicks[MAXENTITIES];
 bool b_BackstabLaugh[MAXENTITIES];
 float f_BackstabBossDmgPenalty[MAXENTITIES];
 float f_BackstabBossDmgPenaltyNpcTime[MAXENTITIES][MAXTF2PLAYERS];
+float f_AntiStuckPhaseThroughFirstCheck[MAXTF2PLAYERS];
+float f_AntiStuckPhaseThrough[MAXTF2PLAYERS];
 
 bool thirdperson[MAXTF2PLAYERS];
 bool b_DoNotUnStuck[MAXENTITIES];
@@ -304,7 +306,7 @@ bool b_IsPlayerNiko[MAXTF2PLAYERS];
 
 float delay_hud[MAXTF2PLAYERS];
 float f_DelayBuildNotif[MAXTF2PLAYERS];
-float f_ClientInvul[MAXTF2PLAYERS]; //Extra ontop of uber if they somehow lose it to some god damn reason.
+float f_ClientInvul[MAXENTITIES]; //Extra ontop of uber if they somehow lose it to some god damn reason.
 
 int Current_Mana[MAXTF2PLAYERS];
 float Mana_Regen_Delay[MAXTF2PLAYERS];
@@ -384,6 +386,7 @@ float f_PotionShrinkEffect[MAXENTITIES];
 int BleedAmountCountStack[MAXENTITIES];
 bool b_HasBombImplanted[MAXENTITIES];
 int g_particleCritText;
+int g_particleMiniCritText;
 int g_particleMissText;
 int LastHitRef[MAXENTITIES];
 int DamageBits[MAXENTITIES];
@@ -550,6 +553,7 @@ float f_TempCooldownForVisualManaPotions[MAXPLAYERS+1];
 float f_DelayLookingAtHud[MAXPLAYERS+1];
 bool b_EntityIsArrow[MAXENTITIES];
 bool b_EntityIsWandProjectile[MAXENTITIES];
+bool b_EntityIgnoredByShield[MAXENTITIES];
 int i_WandIdNumber[MAXENTITIES]; //This is to see what wand is even used. so it does its own logic and so on.
 float f_WandDamage[MAXENTITIES]; //
 int i_WandOwner[MAXENTITIES]; //
@@ -593,6 +597,8 @@ bool b_IgnoredByPlayerProjectiles[MAXENTITIES];
 
 bool b_IsPlayerABot[MAXPLAYERS+1];
 float f_CooldownForHurtHud[MAXPLAYERS];	
+int i_PreviousInteractedEntity[MAXENTITIES];
+bool i_PreviousInteractedEntityDo[MAXENTITIES];
 //Otherwise we get kicks if there is too much hurting going on.
 
 Address g_hSDKStartLagCompAddress;
@@ -960,7 +966,6 @@ int i_PoseMoveY[MAXENTITIES];
 bool b_bThisNpcGotDefaultStats_INVERTED[MAXENTITIES];
 bool b_LagCompensationDeletedArrayList[MAXENTITIES];
 float b_isGiantWalkCycle[MAXENTITIES];
-float f_NpcHasBeenUnstuckAboveThePlayer[MAXENTITIES];
 
 bool Is_a_Medic[MAXENTITIES]; //THIS WAS INSIDE THE NPCS!
 
@@ -1044,8 +1049,6 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 {
 	MarkNativeAsOptional("FuncToVal");
 	CreateNative("FuncToVal", Native_FuncToVal);
-	CreateNative("ZR_ApplyKillEffects", Native_ApplyKillEffects);
-	CreateNative("ZR_GetLevelCount", Native_GetLevelCount);
 	
 	Thirdperson_PluginLoad();
 	
@@ -1262,6 +1265,10 @@ public void OnMapStart()
 	PrecacheSound("player/crit_hit3.wav");
 	PrecacheSound("player/crit_hit2.wav");
 	PrecacheSound("player/crit_hit.wav");
+	PrecacheSound("player/crit_hit_mini.wav");
+	PrecacheSound("player/crit_hit_mini2.wav");
+	PrecacheSound("player/crit_hit_mini3.wav");
+	PrecacheSound("player/crit_hit_mini4.wav");
 	PrecacheSound("mvm/mvm_revive.wav");
 
 	PrecacheSoundCustom("zombiesurvival/headshot1.wav");
@@ -1290,7 +1297,8 @@ public void OnMapStart()
 	ViewChange_MapStart();
 	MapStart_CustomMeleePrecache();
 	WandStocks_Map_Precache();
-	
+	Zero(f_AntiStuckPhaseThroughFirstCheck);
+	Zero(f_AntiStuckPhaseThrough);
 	g_iHaloMaterial_Trace = PrecacheModel("materials/sprites/halo01.vmt");
 	g_iLaserMaterial_Trace = PrecacheModel("materials/sprites/laserbeam.vmt");
 	CreateTimer(0.2, Timer_Temp, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
@@ -2206,6 +2214,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 	
 	if (entity > 0 && entity <= 2048 && IsValidEntity(entity))
 	{
+		f_ClientInvul[entity] = 0.0;
 		f_BackstabDmgMulti[entity] = 0.0;
 		f_KnockbackPullDuration[entity] = 0.0;
 		f_DoNotUnstuckDuration[entity] = 0.0;
@@ -2274,6 +2283,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 		b_ThisEntityIsAProjectileForUpdateContraints[entity] = false;
 		b_EntityIsArrow[entity] = false;
 		b_EntityIsWandProjectile[entity] = false;
+		b_EntityIgnoredByShield[entity] = false;
 		i_WandIdNumber[entity] = -1;
 		CClotBody npc = view_as<CClotBody>(entity);
 		b_Is_Npc_Projectile[entity] = false;
@@ -3066,6 +3076,7 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 	}
 }
 
+
 bool InteractKey(int client, int weapon, bool Is_Reload_Button = false)
 {
 	if(weapon != -1) //Just allow. || GetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack")<GetGameTime())
@@ -3096,6 +3107,10 @@ bool InteractKey(int client, int weapon, bool Is_Reload_Button = false)
 					return true;
 
 				if (TeutonType[client] == TEUTON_WAITING)
+					return false;
+
+					
+				if (b_Is_Blue_Npc[client])
 					return false;
 
 				if(Escape_Interact(client, entity))
@@ -3154,24 +3169,12 @@ public any Native_FuncToVal(Handle plugin, int numParams)
 	return GetNativeCell(1);
 }
 
-public any Native_ApplyKillEffects(Handle plugin, int numParams)
-{
-	NPC_DeadEffects(GetNativeCell(1));
-	return Plugin_Handled;
-}
-
-public any Native_GetLevelCount(Handle plugin, int numParams)
-{
-	return Level[GetNativeCell(1)];
-}
-
 //#file "Zombie Riot" broke in sm 1.11
 
 static void MapStartResetAll()
 {
 	Zero(i_CustomWeaponEquipLogic);
 	Zero(b_IsAGib);
-	Zero(f_StuckTextChatNotif);
 	Zero(i_Hex_WeaponUsesTheseAbilities);
 	Zero(f_WidowsWineDebuffPlayerCooldown);
 	Zero(f_WidowsWineDebuff);
@@ -3203,7 +3206,6 @@ static void MapStartResetAll()
 	Zero(f_ClientInvul);
 	Zero(i_HasBeenBackstabbed);
 	Zero(i_HasBeenHeadShotted);
-	Zero(f_StuckTextChatNotif);
 	Zero(b_LimitedGibGiveMoreHealth);
 	Zero2(f_TargetWasBlitzedByRiotShield);
 	Zero(f_StunExtraGametimeDuration);

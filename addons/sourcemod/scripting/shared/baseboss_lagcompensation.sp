@@ -77,7 +77,6 @@ Action OnPlayerRunCmd_Lag_Comp(int client, float angles[3], int &tickcount)
 	ViewAngles[client] = angles;
 	return Plugin_Continue;
 }
-
 /* Manually remove no longer in use entites */
 void OnEntityDestroyed_LagComp(int entity)
 {
@@ -91,7 +90,7 @@ void OnEntityDestroyed_LagComp(int entity)
 		
 		b_LagCompensationDeletedArrayList[entity] = true;
 		int ref = EntIndexToEntRef(entity);
-		static char key[13];
+		char key[13];
 		IntToString(ref, key, sizeof(key));
 		
 		ArrayList list;
@@ -100,23 +99,20 @@ void OnEntityDestroyed_LagComp(int entity)
 			EntityTrack.Remove(key);
 			if(list)
 			{
-				static LagRecord record;
+				LagRecord record;
 				int length2 = list.Length;
 				for(int a; a<length2; a++)
 				{
 					list.GetArray(a, record);
-					if(!b_Map_BaseBoss_No_Layers[entity] && !b_IsAlliedNpc[entity])
+		//			if(!b_Map_BaseBoss_No_Layers[entity] && !b_IsAlliedNpc[entity])
 					{
-						if(record.m_layerRecords)
-						{
-							delete record.m_layerRecords;
-						}
+						delete record.m_layerRecords;
 					}
 				}
 				delete list;
 			}
 		}
-	
+	/*
 		static LagRecord restore;
 		if(EntityRestore.GetArray(key, restore, sizeof(restore)))
 		{
@@ -128,6 +124,16 @@ void OnEntityDestroyed_LagComp(int entity)
 				}
 			}
 			EntityRestore.Remove(key);
+		}
+	*/
+		LagRecord restore;
+		EntityRestore.GetArray(key, restore, sizeof(restore));
+	//	if(!b_Map_BaseBoss_No_Layers[entity] && !b_IsAlliedNpc[entity])
+		{
+			if(restore.m_layerRecords)
+			{
+				delete restore.m_layerRecords;
+			}
 		}
 	}
 }
@@ -604,8 +610,10 @@ void LagCompensationThink_Forward()
 			{
 				if(b_LagCompensationDeletedArrayList[entity]) //Is the npc dead?
 				{
+					b_EntityIsLagComp[entity] = true;
 					continue; //This npc has died. We reset it to be sure and dont keep tracking it.
 				}
+				b_EntityIsLagComp[entity] = true;
 				
 				IntToString(EntIndexToEntRef(entity), refchar, sizeof(refchar));
 				if(!EntityTrack.GetValue(refchar, list))
@@ -626,10 +634,7 @@ void LagCompensationThink_Forward()
 						break;
 					
 					// remove tail, get new tail
-					if(!b_Map_BaseBoss_No_Layers[entity] && !b_IsAlliedNpc[entity]) //Filter to make sure it doesnt delete things that dont exist.
-					{
-						delete record.m_layerRecords;
-					}
+					delete record.m_layerRecords;
 					list.Erase(0);
 					length--;
 				}
@@ -669,6 +674,11 @@ void LagCompensationThink_Forward()
 						record.m_masterSequence = GetEntProp(entity, Prop_Data, "m_nSequence");
 						record.m_masterCycle = GetEntPropFloat(entity, Prop_Data, "m_flCycle");
 					}
+					else
+					{
+						record.m_layerRecords = null;
+					}
+
 					list.PushArray(record);
 				}
 			}

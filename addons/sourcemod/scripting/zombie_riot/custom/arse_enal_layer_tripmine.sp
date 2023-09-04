@@ -68,9 +68,9 @@ public void Weapon_Arsenal_Trap(int client, int weapon, const char[] classname, 
 			
 			float attack_speed;
 		
-			attack_speed = 1.0 / Attributes_FindOnPlayerZR(client, 343, true, 1.0); //Sentry attack speed bonus
+			attack_speed = 1.0 / Attributes_GetOnPlayer(client, 343, true, true); //Sentry attack speed bonus
 				
-			Bonus_damage = attack_speed * Attributes_FindOnPlayerZR(client, 287, true, 1.0);			//Sentry damage bonus
+			Bonus_damage = attack_speed * Attributes_GetOnPlayer(client, 287, true, true);			//Sentry damage bonus
 			
 			if (Bonus_damage <= 1.0)
 				Bonus_damage = 1.0;
@@ -589,8 +589,8 @@ void Cause_Terroriser_Explosion(int client, int npc, float damage, float EntLoc2
 	spawnRing_Vectors(EntLoc2, 0.0, 0.0, 0.0, 0.0, "materials/sprites/laserbeam.vmt", 255, 0, 0, 200, 1, 0.25, 6.0, 2.1, 1, radius);	
 	if(allowLagcomp)
 	{
-		StartLagCompensation_Base_Boss(client);
 		b_LagCompNPC_No_Layers = true;
+		StartLagCompensation_Base_Boss(client);
 
 		Explode_Logic_Custom(damage, client, client, -1, EntLoc2, Terroriser_Implant_Radius,_,_,false);
 

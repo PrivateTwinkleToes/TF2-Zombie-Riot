@@ -122,7 +122,7 @@ methodmap SoldinePrototype < CClotBody
 		npc.m_iState = 0;
 		npc.m_flGetClosestTargetTime = 0.0;
 		npc.StartPathing();
-		npc.m_flSpeed = 300.0;
+		npc.m_flSpeed = 200.0;
 		
 		
 		int skin = 1;
@@ -236,6 +236,8 @@ public void SoldinePrototype_NPCDeath(int entity)
 	SDKUnhook(npc.index, SDKHook_Think, SoldinePrototype_ClotThink);
 		
 	
+	if(IsValidEntity(npc.m_iWearable4))
+		RemoveEntity(npc.m_iWearable4);
 	if(IsValidEntity(npc.m_iWearable3))
 		RemoveEntity(npc.m_iWearable3);
 	if(IsValidEntity(npc.m_iWearable2))
@@ -266,7 +268,7 @@ void SoldinePrototypeSelfDefense(SoldinePrototype npc, float gameTime, int targe
 				npc.AddGesture("ACT_MP_ATTACK_STAND_PRIMARY");
 				
 				npc.FaceTowards(vecTarget, 20000.0);
-				float DamageRocket = 75.0;
+				float DamageRocket = 50.0;
 				npc.PlayMeleeSound();
 				npc.FireRocket(vecTarget, DamageRocket, 900.0);
 				npc.m_flDoingAnimation = gameTime + 0.25;

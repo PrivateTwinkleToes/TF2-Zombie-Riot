@@ -366,7 +366,16 @@ enum
 	EXPIDONSA_DUALREA				= 319,
 	EXPIDONSA_GUARDUS				= 320,
 	EXPIDONSA_VAUSTECHICUS			= 321,
-	EXPIDONSA_MINIGUNASSISA			= 322
+	EXPIDONSA_MINIGUNASSISA			= 322,
+	EXPIDONSA_IGNITUS				= 323,
+	EXPIDONSA_HELENA				= 324,
+
+	EXPIDONSA_ERASUS				= 325,
+	EXPIDONSA_GIANTTANKUS			= 326,
+	EXPIDONSA_ANFUHREREISENHARD		= 327, //not as many gimmics as everything else has a million gimmics
+	EXPIDONSA_SPEEDUSADIVUS			= 328,
+	WEAPON_SENSAL_AFTERIMAGE		= 329
+	
 }
 
 public const char NPC_Names[][] =
@@ -715,7 +724,14 @@ public const char NPC_Names[][] =
 	"Dual Rea",
 	"Guardus",
 	"Vaus Techicus",
-	"Minigun Assisa"
+	"Minigun Assisa",
+	"Ignitus",
+	"Helena",
+	"Erasus",
+	"Giant Tankus",
+	"Anfuhrer Eisenhard",
+	"Speedus Adivus",
+	"Allied Sensal Afterimage"
 };
 // See items.sp for IDs to names
 public const int NPCCategory[] =
@@ -987,7 +1003,7 @@ public const int NPCCategory[] =
 	9,	// SEAREEFBREAKER_ALT,
 	9,	// SEAREEFBREAKER_CARRIER,
 	0,	// BARRACK_THORNS	= 242,
-	1,	// RAIDMODE_GOD_ARKANTOS = 243,
+	2,	// RAIDMODE_GOD_ARKANTOS = 243,
 	9,	// SEABORN_SCOUT		= 244,
 	9,	// SEABORN_SOLDIER		= 245,
 	0,	// CITIZEN_RUNNER		= 246,
@@ -1030,18 +1046,18 @@ public const int NPCCategory[] =
 	9,	// ISHARMLA_TRANS		= 283,
 
 	-1,	// RUINA_THEOCRACY = 284,
-	-1,	// EXPIDONSA_BENERA = 285,
-	-1,	// EXPIDONSA_PENTAL = 286,
-	-1,	// EXPIDONSA_DEFANDA = 287,
-	-1,	// EXPIDONSA_SELFAM_IRE = 288,
-	-1,	// EXPIDONSA_VAUSMAGICA = 289,
-	-1,	// EXPIDONSA_PISTOLEER = 290,
-	-1,	// EXPIDONSA_DIVERSIONISTICO 	= 291,
+	10,	// EXPIDONSA_BENERA = 285,
+	10,	// EXPIDONSA_PENTAL = 286,
+	10,	// EXPIDONSA_DEFANDA = 287,
+	10,	// EXPIDONSA_SELFAM_IRE = 288,
+	10,	// EXPIDONSA_VAUSMAGICA = 289,
+	10,	// EXPIDONSA_PISTOLEER = 290,
+	10,	// EXPIDONSA_DIVERSIONISTICO 	= 291,
 	-1,	// RUINA_ADIANTUM 				= 292,
 	-1,	// RUINA_LANIUS				= 293,
-	-1,	// EXPIDONSA_HEAVYPUNUEL		= 294,
+	10,	// EXPIDONSA_HEAVYPUNUEL		= 294,
 	-1,	// RUINA_MAGIA					= 295,
-	-1,	// EXPIDONSA_SEARGENTIDEAL		= 296,
+	10,	// EXPIDONSA_SEARGENTIDEAL		= 296,
 
 	-1,	// SEA_RAIDBOSS_SILVESTER		= 297,
 	-1,	// SEA_RAIDBOSS_GOGGLES		= 298,
@@ -1054,21 +1070,29 @@ public const int NPCCategory[] =
 	-1,	// SEA_ALLY_DONNERKRIEG		= 305,
 	-1,	// SEA_ALLY_SCHWERTKRIEG		= 306,
 	-1,	// SEA_ALLY_GOD_ARKANTOS		= 307,
-	0	// VIP_BUILDING			= 308
-	-1,	// EXPIDONSA_RIFALMANU		= 309,
-	-1,	// EXPIDONSA_SICCERINO			= 310,
-	-1,	// EXPIDONSA_SOLDINE_PROTOTYPE			= 311,
-	-1,	// EXPIDONSA_SOLDINE					= 312,
-	-1,	// EXPIDONSA_PROTECTA					= 313,
-	-1,	// EXPIDONSA_SNIPONEER					= 314,
-	-1,	// EXPIDONSA_EGABUNAR					= 315,
-	-1,	// EXPIDONSA_ENEGAKAPUS					= 316,
-	-1, // EXPIDONSA_CAPTINOAGENTUS				= 317,
-	-1, // RAIDMODE_EXPIDONSA_SENSAL			= 318,
-	-1, // EXPIDONSA_DUALREA					= 319,
-	-1, // EXPIDONSA_GUARDUS					= 320,
-	-1, // EXPIDONSA_VAUSTECHICUS				= 321,
-	-1,	// EXPIDONSA_MINIGUNASSISA				= 322
+	0,	// VIP_BUILDING			= 308
+	10,	// EXPIDONSA_RIFALMANU		= 309,
+	10,	// EXPIDONSA_SICCERINO			= 310,
+	10,	// EXPIDONSA_SOLDINE_PROTOTYPE			= 311,
+	10,	// EXPIDONSA_SOLDINE					= 312,
+	10,	// EXPIDONSA_PROTECTA					= 313,
+	10,	// EXPIDONSA_SNIPONEER					= 314,
+	10,	// EXPIDONSA_EGABUNAR					= 315,
+	10,	// EXPIDONSA_ENEGAKAPUS					= 316,
+	10, // EXPIDONSA_CAPTINOAGENTUS				= 317,
+	2, // RAIDMODE_EXPIDONSA_SENSAL			= 318,
+	10, // EXPIDONSA_DUALREA					= 319,
+	10, // EXPIDONSA_GUARDUS					= 320,
+	10, // EXPIDONSA_VAUSTECHICUS				= 321,
+	10,	// EXPIDONSA_MINIGUNASSISA				= 322
+	10,	// EXPIDONSA_IGNITUS				= 323,
+	10,	// EXPIDONSA_HELENA				= 324,
+
+	10,	// EXPIDONSA_ERASUS				= 325,
+	10,	// EXPIDONSA_GIANTTANKUS			= 326,
+	10,	// EXPIDONSA_ANFUHREREISENHARD		= 327,
+	10, //EXPIDONSA_SPEEDUSADIVUS			= 328,
+	0, 	//WEAPON_SENSAL_AFTERIMAGE			= 329 
 };
 
 public const char NPC_Plugin_Names_Converted[][] =
@@ -1410,12 +1434,21 @@ public const char NPC_Plugin_Names_Converted[][] =
 	"npc_sniponeer",
 	"npc_ega_bunar",
 	"npc_enegakapus",
+	//wave 30+:
 	"npc_captino_agentus",
-	"npc_sensal",
+	"npc_sensal", //Raid
 	"npc_dualrea",
 	"npc_guardus",
 	"npc_vaus_techicus",
-	"npc_minigun_assisa"
+	"npc_minigun_assisa",
+	"npc_ignitus",
+	"npc_helena",
+	//wave 45+:
+	"npc_erasus",
+	"npc_gianttankus",
+	"npc_anfuhrer_eisenhard",
+	"npc_speedus_adivus",
+	"",
 };
 
 void NPC_MapStart()
@@ -1651,7 +1684,13 @@ void NPC_MapStart()
 	Guardus_OnMapStart_NPC();
 	VausTechicus_OnMapStart_NPC();
 	MinigunAssisa_OnMapStart_NPC();
-
+	Ignitus_OnMapStart_NPC();
+	Helena_OnMapStart_NPC();
+//wave 45-60 there arent as many enemies as im running out of ideas and i want to resuse top enemies
+	Erasus_OnMapStart_NPC();
+	GiantTankus_OnMapStart_NPC();
+	AnfuhrerEisenhard_OnMapStart_NPC();
+	SpeedusAdivus_OnMapStart_NPC();
 	
 	//Alt Barracks
 	Barrack_Alt_Ikunagae_MapStart();
@@ -1668,6 +1707,7 @@ void NPC_MapStart()
 	Barrack_Alt_Scientific_Witchery_MapStart();
 	Barracks_Thorns();
 	VIPBuilding_MapStart();
+	AlliedSensalAbility_OnMapStart_NPC();
 
 	// Raid Low Prio
 	TrueFusionWarrior_OnMapStart();
@@ -2514,8 +2554,13 @@ any Npc_Create(int Index_Of_Npc, int client, float vecPos[3], float vecAng[3], b
 			
 		case SEA_RAIDBOSS_SCHWERTKRIEG:
 			entity = Raidboss_Schwertkrieg(client, vecPos, vecAng, ally);
+		
+		case SEA_ALLY_SILVESTER:
+			entity = SeaAllySilvester(vecPos, vecAng);
+		
+		case SEA_ALLY_GOGGLES:
+			entity = SeaAllyGoggles(vecPos, vecAng);
 
-			
 		case EXPIDONSA_BENERA:
 			entity = Benera(client, vecPos, vecAng, ally);
 			
@@ -2541,7 +2586,7 @@ any Npc_Create(int Index_Of_Npc, int client, float vecPos[3], float vecAng[3], b
 			entity = HeavyPunuel(client, vecPos, vecAng, ally);
 
 		case EXPIDONSA_SEARGENTIDEAL:
-			entity = SeargentIdeal(client, vecPos, vecAng, ally);
+			entity = SeargentIdeal(client, vecPos, vecAng, ally, data);
 		
 		case VIP_BUILDING:
 			entity = VIPBuilding(client, vecPos, vecAng);
@@ -2587,6 +2632,27 @@ any Npc_Create(int Index_Of_Npc, int client, float vecPos[3], float vecAng[3], b
 
 		case EXPIDONSA_MINIGUNASSISA:
 			entity = MinigunAssisa(client, vecPos, vecAng, ally);
+
+		case EXPIDONSA_IGNITUS:
+			entity = Ignitus(client, vecPos, vecAng, ally);
+
+		case EXPIDONSA_HELENA:
+			entity = Helena(client, vecPos, vecAng, ally);
+
+		case EXPIDONSA_ERASUS:
+			entity = Erasus(client, vecPos, vecAng, ally);
+
+		case EXPIDONSA_GIANTTANKUS:
+			entity = GiantTankus(client, vecPos, vecAng, ally);
+
+		case EXPIDONSA_ANFUHREREISENHARD:
+			entity = AnfuhrerEisenhard(client, vecPos, vecAng, ally);
+
+		case EXPIDONSA_SPEEDUSADIVUS:
+			entity = SpeedusAdivus(client, vecPos, vecAng, ally);
+
+		case WEAPON_SENSAL_AFTERIMAGE:
+			entity = AlliedSensalAbility(client, vecPos, vecAng, ally);
 
 		default:
 			PrintToChatAll("Please Spawn the NPC via plugin or select which npcs you want! ID:[%i] Is not a valid npc!", Index_Of_Npc);
@@ -3417,13 +3483,18 @@ public void NPCDeath(int entity)
 			
 		case RUINA_THEOCRACY, RUINA_ADIANTUM, RUINA_LANIUS, RUINA_MAGIA:
 			Ruina_NPCDeath_Override(entity); //all ruina npc deaths are here
-
-
+		
 		case SEA_RAIDBOSS_DONNERKRIEG:
 			Raidboss_Donnerkrieg_NPCDeath(entity);
 			
 		case SEA_RAIDBOSS_SCHWERTKRIEG:
 			Raidboss_Schwertkrieg_NPCDeath(entity);
+		
+		case SEA_ALLY_SILVESTER:
+			SeaAllySilvester_NPCDeath(entity);
+		
+		case SEA_ALLY_GOGGLES:
+			SeaAllyGoggles_NPCDeath(entity);
 
 		case EXPIDONSA_BENERA:
 			Benera_NPCDeath(entity); 
@@ -3496,6 +3567,27 @@ public void NPCDeath(int entity)
 
 		case EXPIDONSA_MINIGUNASSISA:
 			MinigunAssisa_NPCDeath(entity);
+
+		case EXPIDONSA_IGNITUS:
+			Ignitus_NPCDeath(entity);
+
+		case EXPIDONSA_HELENA:
+			Helena_NPCDeath(entity);
+
+		case EXPIDONSA_ERASUS:
+			Erasus_NPCDeath(entity);
+
+		case EXPIDONSA_GIANTTANKUS:
+			GiantTankus_NPCDeath(entity);
+
+		case EXPIDONSA_ANFUHREREISENHARD:
+			AnfuhrerEisenhard_NPCDeath(entity);
+
+		case EXPIDONSA_SPEEDUSADIVUS:
+			SpeedusAdivus_NPCDeath(entity);
+
+		case WEAPON_SENSAL_AFTERIMAGE:
+			AlliedSensalAbility_NPCDeath(entity);
 
 		default:
 			PrintToChatAll("This Npc Did NOT Get a Valid Internal ID! ID that was given but was invalid:[%i]", i_NpcInternalId[entity]);
@@ -4320,6 +4412,24 @@ Action NpcSpecificOnTakeDamage(int victim, int &attacker, int &inflictor, float 
 
 		case EXPIDONSA_MINIGUNASSISA:
 			MinigunAssisa_OnTakeDamage(victim, attacker, inflictor, damage, damagetype, weapon, damageForce, damagePosition, damagecustom);
+			
+		case EXPIDONSA_IGNITUS:
+			Ignitus_OnTakeDamage(victim, attacker, inflictor, damage, damagetype, weapon, damageForce, damagePosition, damagecustom);
+
+		case EXPIDONSA_HELENA:
+			Helena_OnTakeDamage(victim, attacker, inflictor, damage, damagetype, weapon, damageForce, damagePosition, damagecustom);
+
+		case EXPIDONSA_ERASUS:
+			Erasus_OnTakeDamage(victim, attacker, inflictor, damage, damagetype, weapon, damageForce, damagePosition, damagecustom);
+
+		case EXPIDONSA_GIANTTANKUS:
+			GiantTankus_OnTakeDamage(victim, attacker, inflictor, damage, damagetype, weapon, damageForce, damagePosition, damagecustom);
+
+		case EXPIDONSA_ANFUHREREISENHARD:
+			AnfuhrerEisenhard_OnTakeDamage(victim, attacker, inflictor, damage, damagetype, weapon, damageForce, damagePosition, damagecustom);
+
+		case EXPIDONSA_SPEEDUSADIVUS:
+			SpeedusAdivus_OnTakeDamage(victim, attacker, inflictor, damage, damagetype, weapon, damageForce, damagePosition, damagecustom);
 	}
 	return Plugin_Changed;
 }
@@ -4431,6 +4541,7 @@ Action NpcSpecificOnTakeDamage(int victim, int &attacker, int &inflictor, float 
 #include "zombie_riot/npc/ally/npc_necromancy_calcium.sp"
 #include "zombie_riot/npc/ally/npc_cured_last_survivor.sp"
 #include "zombie_riot/npc/ally/npc_citizen.sp"
+#include "zombie_riot/npc/ally/npc_allied_sensal_afterimage.sp"
 
 #include "zombie_riot/npc/raidmode_bosses/npc_true_fusion_warrior.sp"
 #include "zombie_riot/npc/raidmode_bosses/npc_blitzkrieg.sp"
@@ -4625,6 +4736,8 @@ Action NpcSpecificOnTakeDamage(int victim, int &attacker, int &inflictor, float 
 
 #include "zombie_riot/npc/raidmode_bosses/seaborn/npc_donnerkrieg.sp"
 #include "zombie_riot/npc/raidmode_bosses/seaborn/npc_schwertkrieg.sp"
+#include "zombie_riot/npc/ally/npc_seaally_silvester.sp"
+#include "zombie_riot/npc/ally/npc_seaally_goggles.sp"
 
 #include "zombie_riot/npc/expidonsa/npc_expidonsa_base.sp"
 #include "zombie_riot/npc/expidonsa/npc_benera.sp"
@@ -4650,6 +4763,12 @@ Action NpcSpecificOnTakeDamage(int victim, int &attacker, int &inflictor, float 
 #include "zombie_riot/npc/expidonsa/npc_guardus.sp"
 #include "zombie_riot/npc/expidonsa/npc_vaus_techicus.sp"
 #include "zombie_riot/npc/expidonsa/npc_minigun_assisa.sp"
+#include "zombie_riot/npc/expidonsa/npc_erasus.sp"
+#include "zombie_riot/npc/expidonsa/npc_gianttankus.sp"
+#include "zombie_riot/npc/expidonsa/npc_helena.sp"
+#include "zombie_riot/npc/expidonsa/npc_ignitus.sp"
+#include "zombie_riot/npc/expidonsa/npc_speedus_adivus.sp"
+#include "zombie_riot/npc/expidonsa/npc_anfuhrer_eisenhard.sp"
 #include "zombie_riot/npc/raidmode_bosses/npc_sensal.sp"
 
 #include "zombie_riot/npc/ally/npc_vip_building.sp"

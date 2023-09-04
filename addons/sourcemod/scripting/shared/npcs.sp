@@ -40,6 +40,8 @@ static Handle SyncHudRaid;
 
 static Handle SyncHud;
 static char LastClassname[2049][64];
+static bool b_DoNotDisplayHurtHud[MAXENTITIES];
+static float f_DelayNextWaveStartAdvancing;
 //static float f_SpawnerCooldown[MAXENTITIES];
 /*
 void NPC_Spawn_ClearAll()
@@ -49,7 +51,9 @@ void NPC_Spawn_ClearAll()
 
 void Npc_Sp_Precache()
 {
+	f_DelayNextWaveStartAdvancing = 0.0;
 	g_particleCritText = PrecacheParticleSystem("crit_text");
+	g_particleMiniCritText = PrecacheParticleSystem("minicrit_text");
 	g_particleMissText = PrecacheParticleSystem("miss_text");
 }
 
@@ -144,6 +148,7 @@ public Action GetClosestSpawners(Handle timer)
 {
 	float f3_PositionTemp_2[3];
 	float f3_PositionTemp[3];
+	Zombie_Delay_Warning();
 
 	for(int client=1; client<=MaxClients; client++)
 	{
@@ -728,7 +733,10 @@ public void NPC_SpawnNext(bool force, bool panzer, bool panzer_warning)
 			}
 			else if(!found)
 			{
-				Waves_Progress();
+				if(f_DelayNextWaveStartAdvancing < GetGameTime())
+				{
+					Waves_Progress();
+				}
 			}
 		}
 	}
@@ -1236,6 +1244,7 @@ public Action NPC_OnTakeDamage(int victim, int &attacker, int &inflictor, float 
 		WeaponWasValid = true;
 
 	float GameTime = GetGameTime();
+	b_DoNotDisplayHurtHud[victim] = false;
 
 	// if your damage is higher then a million, we give up and let it through, theres multiple reasons why, mainly slaying.
 	if(b_NpcIsInvulnerable[victim] && damage < 999999.9)
@@ -1255,7 +1264,7 @@ public Action NPC_OnTakeDamage(int victim, int &attacker, int &inflictor, float 
 	{
 		if(!(i_HexCustomDamageTypes[victim] & ZR_DAMAGE_NOAPPLYBUFFS_OR_DEBUFFS))
 		{
-			if(NullfyDamageAndNegate(victim, attacker, inflictor, damage, damagetype, weapon,damagecustom,GameTime))
+			if(NullfyDamageAndNegate(victim, attacker, inflictor, damage, damagetype, weapon,damagecustom))
 				return Plugin_Handled;	
 			
 
@@ -1331,6 +1340,12 @@ public Action NPC_OnTakeDamage(int victim, int &attacker, int &inflictor, float 
 						OnTakeDamageBackstab(victim, attacker, inflictor, damage, damagetype, weapon, GameTime);
 					}
 				}
+				if(TF2_IsPlayerInCondition(attacker, TFCond_NoHealingDamageBuff) || damagetype & DMG_CRIT)
+				{		
+					damage *= 1.35;
+					DisplayCritAboveNpc(victim, attacker, true,_,_,true); //Display crit above head
+					damagetype &= ~DMG_CRIT;
+				}
 			}	
 		}
 		NpcSpecificOnTakeDamage(victim, attacker, inflictor, damage, damagetype, weapon, damageForce, damagePosition, damagecustom);
@@ -1341,7 +1356,10 @@ public Action NPC_OnTakeDamage(int victim, int &attacker, int &inflictor, float 
 			{
 				SeargentIdeal_Protect(victim, attacker, inflictor, damage, damagetype, weapon, damageForce, damagePosition);
 				if(damage == 0.0)
+				{
+					b_DoNotDisplayHurtHud[victim] = true;
 					return Plugin_Handled;
+				}
 			}
 #endif
 			if(attacker <= MaxClients)
@@ -1393,40 +1411,44 @@ public Action NPC_OnTakeDamage(int victim, int &attacker, int &inflictor, float 
 
 public void NPC_OnTakeDamage_Post(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon, const float damageForce[3], const float damagePosition[3])
 {
-	if(inflictor > 0 && inflictor <= MaxClients)
-	{
-		GiveRageOnDamage(inflictor, damage);
-		Calculate_And_Display_hp(inflictor, victim, damage, false);
-	}
-	else if(attacker > 0 && attacker <= MaxClients)
-	{
-		GiveRageOnDamage(attacker, damage);
-		Calculate_And_Display_hp(attacker, victim, damage, false);	
-	}
-	OnPostAttackUniqueWeapon(attacker, victim, weapon, i_HexCustomDamageTypes[victim]);
-
+	
 	int health = GetEntProp(victim, Prop_Data, "m_iHealth");
-
-	Event event = CreateEvent("npc_hurt");
-	if(event) 
+	if(damage != 0.0 && !b_NpcIsInvulnerable[victim] && !b_DoNotDisplayHurtHud[victim]) //make sure to still show it if they are invinceable!
 	{
-		event.SetInt("entindex", victim);
-		event.SetInt("health", health);
-		event.SetInt("damageamount", RoundToFloor(damage));
-		event.SetBool("crit", (damagetype & DMG_ACID) == DMG_ACID);
-
-		if(attacker > 0 && attacker <= MaxClients)
+		if(inflictor > 0 && inflictor <= MaxClients)
 		{
-			event.SetInt("attacker_player", GetClientUserId(attacker));
-			event.SetInt("weaponid", 0);
+			GiveRageOnDamage(inflictor, damage);
+			Calculate_And_Display_hp(inflictor, victim, damage, false);
 		}
-		else 
+		else if(attacker > 0 && attacker <= MaxClients)
 		{
-			event.SetInt("attacker_player", 0);
-			event.SetInt("weaponid", 0);
+			GiveRageOnDamage(attacker, damage);
+			Calculate_And_Display_hp(attacker, victim, damage, false);	
 		}
+		OnPostAttackUniqueWeapon(attacker, victim, weapon, i_HexCustomDamageTypes[victim]);
 
-		event.Fire();
+
+		Event event = CreateEvent("npc_hurt");
+		if(event) 
+		{
+			event.SetInt("entindex", victim);
+			event.SetInt("health", health);
+			event.SetInt("damageamount", RoundToFloor(damage));
+			event.SetBool("crit", (damagetype & DMG_ACID) == DMG_ACID);
+
+			if(attacker > 0 && attacker <= MaxClients)
+			{
+				event.SetInt("attacker_player", GetClientUserId(attacker));
+				event.SetInt("weaponid", 0);
+			}
+			else 
+			{
+				event.SetInt("attacker_player", 0);
+				event.SetInt("weaponid", 0);
+			}
+
+			event.Fire();
+		}
 	}
 
 	i_HexCustomDamageTypes[victim] = 0; //Reset it back to 0.
@@ -2323,6 +2345,10 @@ stock float NPC_OnTakeDamage_Equipped_Weapon_Logic(int victim, int &attacker, in
 		{
 			NPC_OnTakeDamage_Blemishine(attacker, victim, damage,weapon);
 		}
+		case WEAPON_HAZARD, WEAPON_HAZARD_UNSTABLE, WEAPON_HAZARD_LUNATIC, WEAPON_HAZARD_CHAOS, WEAPON_HAZARD_STABILIZED, WEAPON_HAZARD_DEMI, WEAPON_HAZARD_PERFECT:
+		{
+			NPC_OnTakeDamage_Hazard(attacker, victim, damage,weapon);
+		}
 		case WEAPON_FANTASY_BLADE:
 		{
 			Npc_OnTakeDamage_Fantasy_Blade(attacker, damagetype);
@@ -2366,6 +2392,10 @@ stock float NPC_OnTakeDamage_Equipped_Weapon_Logic(int victim, int &attacker, in
 		{
 			Vamp_ApplyBloodlust(attacker, victim, 4, true, false);
 		}
+		case WEAPON_SENSAL_SCYTHE, WEAPON_SENSAL_SCYTHE_PAP_1, WEAPON_SENSAL_SCYTHE_PAP_2, WEAPON_SENSAL_SCYTHE_PAP_3:
+		{
+			WeaponSensal_Scythe_OnTakeDamage(attacker, victim,weapon);
+		}
 	}
 #endif
 
@@ -2398,7 +2428,7 @@ stock float NPC_OnTakeDamage_Equipped_Weapon_Logic_PostCalc(int victim, int &att
 #endif
 	return damage;
 }
-bool NullfyDamageAndNegate(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, int damagecustom, float GameTime)
+bool NullfyDamageAndNegate(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, int damagecustom)
 {
 	if(attacker <= MaxClients)
 	{
@@ -2440,10 +2470,6 @@ bool NullfyDamageAndNegate(int victim, int &attacker, int &inflictor, float &dam
 		{
 			return true;
 		}
-	}
-	if(f_NpcHasBeenUnstuckAboveThePlayer[victim] > GameTime) //They were immortal, just nullfy any and all damage.
-	{
-		return true;
 	}
 	return false;
 }
@@ -2657,6 +2683,7 @@ bool OnTakeDamageScalingWaveDamage(int &attacker, int &inflictor, float &damage,
 	{
 		if(i_CustomWeaponEquipLogic[weapon] == WEAPON_TEUTON_DEAD)
 		{
+			ExtraDamageDealt *= 0.5;
 			damage *= ExtraDamageDealt;
 		}
 	}
@@ -2900,6 +2927,9 @@ bool OnTakeDamageBackstab(int victim, int &attacker, int &inflictor, float &dama
 	{
 		if(damagetype & DMG_CRIT)
 		{		
+			damage *= 1.35;
+			DisplayCritAboveNpc(victim, attacker, true); //Display crit above head
+			damagetype &= ~DMG_CRIT;
 			if(i_HeadshotAffinity[attacker] == 1)
 			{
 				damage *= 1.35;
@@ -3237,4 +3267,9 @@ void DisplayRGBHealthValue(int Health_init, int Maxhealth_init, int &red, int &g
 		green = 255;
 		blue = 0;				
 	}
+}
+
+void GiveProgressDelay(float Time)
+{
+	f_DelayNextWaveStartAdvancing = GetGameTime() + Time;
 }

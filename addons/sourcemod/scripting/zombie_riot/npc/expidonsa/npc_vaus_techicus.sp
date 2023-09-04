@@ -84,7 +84,7 @@ methodmap VausTechicus < CClotBody
 
 	public VausTechicus(int client, float vecPos[3], float vecAng[3], bool ally)
 	{
-		VausTechicus npc = view_as<VausTechicus>(CClotBody(vecPos, vecAng, "models/player/soldier.mdl", "1.1", "200000", ally));
+		VausTechicus npc = view_as<VausTechicus>(CClotBody(vecPos, vecAng, "models/player/soldier.mdl", "1.1", "20000", ally));
 		
 		i_NpcInternalId[npc.index] = EXPIDONSA_VAUSTECHICUS;
 		i_NpcWeight[npc.index] = 3;
@@ -278,10 +278,10 @@ void VausTechicusShieldGiving(VausTechicus npc, float gameTime)
 	{
 		npc.m_flNextRangedSpecialAttack = gameTime + 15.0;
 		float flPos[3];
-		float flAng[3];
-		GetAttachment(npc.index, "head", flPos, flAng);		
-		int particler = ParticleEffectAt(flPos, "drg_wrenchmotron_teleport", 1.0);
-		SetParent(npc.index, particler, "head");
+		GetEntPropVector(npc.index, Prop_Data, "m_vecAbsOrigin", flPos);
+		flPos[2] += 5.0;
+		spawnRing_Vectors(flPos, /*RANGE start*/ 1.0, 0.0, 0.0, 0.0, "materials/sprites/laserbeam.vmt", 125, 125, 125, 200, 1, /*DURATION*/ 0.5, 6.0, 0.1, 1,  /*RANGE END*/350 * 2.0);
+		
 		npc.PlayShieldSound();
 	}
 

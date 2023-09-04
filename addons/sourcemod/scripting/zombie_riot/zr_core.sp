@@ -110,7 +110,18 @@ enum
 	WEAPON_JUDGE = 39,
 	WEAPON_JUDGE_PAP = 40,
 	WEAPON_BOARD = 41,
-	WEAPON_GERMAN = 42
+	WEAPON_GERMAN = 42,
+	WEAPON_SENSAL_SCYTHE = 43,
+	WEAPON_SENSAL_SCYTHE_PAP_1 = 44,
+	WEAPON_SENSAL_SCYTHE_PAP_2 = 45,
+	WEAPON_SENSAL_SCYTHE_PAP_3 = 46,
+	WEAPON_HAZARD = 47,
+	WEAPON_HAZARD_UNSTABLE = 48,
+	WEAPON_HAZARD_LUNATIC = 49,
+	WEAPON_HAZARD_CHAOS = 50,
+	WEAPON_HAZARD_STABILIZED = 51,
+	WEAPON_HAZARD_DEMI = 52,
+	WEAPON_HAZARD_PERFECT = 53
 }
 
 ArrayList SpawnerList;
@@ -202,6 +213,8 @@ int i_SvRollAngle[MAXTF2PLAYERS];
 Handle SyncHud_ArmorCounter;
 	
 int CashSpent[MAXTF2PLAYERS];
+int CashSpentGivePostSetup[MAXTF2PLAYERS];
+bool CashSpentGivePostSetupWarning[MAXTF2PLAYERS];
 int CashSpentTotal[MAXTF2PLAYERS];
 int CashRecievedNonWave[MAXTF2PLAYERS];
 int Scrap[MAXTF2PLAYERS];
@@ -302,6 +315,7 @@ bool applied_lastmann_buffs_once = false;
 #include "zombie_riot/freeplay.sp"
 #include "zombie_riot/items.sp"
 #include "zombie_riot/music.sp"
+#include "zombie_riot/natives.sp"
 #include "zombie_riot/queue.sp"
 #include "zombie_riot/tutorial.sp"
 #include "zombie_riot/waves.sp"
@@ -400,10 +414,12 @@ bool applied_lastmann_buffs_once = false;
 #include "zombie_riot/custom/weapon_judge.sp"
 #include "zombie_riot/custom/weapon_board.sp"
 #include "zombie_riot/custom/wand/weapon_german_caster.sp"
+#include "zombie_riot/custom/weapon_sensal.sp"
+#include "zombie_riot/custom/weapon_hazard.sp"
 
 void ZR_PluginLoad()
 {
-	CreateNative("ZR_GetWaveCount", Native_GetWaveCounts);
+	Natives_PluginLoad();
 }
 
 void ZR_PluginStart()
@@ -526,6 +542,7 @@ void ZR_MapStart()
 	EscapeSentryHat_MapStart();
 	PrecachePlayerGiveGiveResponseVoice();
 	Mlynar_Map_Precache();
+	Hazard_Map_Precache();
 	Judge_Map_Precache();
 	Reset_stats_Mlynar_Global();
 	Blemishine_Map_Precache();
@@ -610,7 +627,6 @@ void ZR_MapStart()
 	
 	CreateTimer(2.0, GetClosestSpawners, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	
-	
 	char_MusicString1[0] = 0;
 	char_MusicString2[0] = 0;
 	char_RaidMusicSpecial1[0] = 0;
@@ -619,6 +635,7 @@ void ZR_MapStart()
 	i_MusicLength2 = 0;
 	i_RaidMusicLength1 = 0;
 	b_RaidMusicCustom1 = false;
+	ResetMapStartSensalWeapon();
 	
 	//Store_RandomizeNPCStore(true);
 }
@@ -702,11 +719,6 @@ void ZR_ClientDisconnect(int client)
 			}
 		}
 	}
-}
-
-public any Native_GetWaveCounts(Handle plugin, int numParams)
-{
-	return CurrentRound;
 }
 
 public Action OnReloadCommand(int args)
@@ -1005,7 +1017,7 @@ public void OnClientAuthorized(int client)
 	f_LeftForDead_Cooldown[client] = 0.0;
 	
 	if(CurrentRound)
-		CashSpent[client] = RoundToCeil(float(CurrentCash) * 0.20);
+		CashSpent[client] = RoundToCeil(float(CurrentCash) * 0.10);
 }
 
 void ZR_OnClientDisconnect_Post()
@@ -1532,7 +1544,7 @@ stock void AddAmmoClient(int client, int AmmoType, int AmmoCount = 0, float Mult
 	}
 	if(i_CurrentEquippedPerk[client] == 7 && !ignoreperk) // Recycle Porier
 	{
-		AmmoToAdd = RoundToCeil(float(AmmoToAdd) * 1.25);
+		AmmoToAdd = RoundToCeil(float(AmmoToAdd) * 1.33);
 	}
 	if(Multi != 1.0)
 	{

@@ -276,14 +276,14 @@ public Action Timer_Detect_Player_Near_Armor_Grenade(Handle timer, DataPack pack
 				color[2] = 0;
 				color[3] = 255;
 		
-				TE_SetupBeamRingPoint(powerup_pos, 10.0, 500.0, g_BeamIndex_heal, -1, 0, 5, 0.5, 5.0, 1.0, color, 0, 0);
+				TE_SetupBeamRingPoint(powerup_pos, 10.0, 500.0 * 2.0, g_BeamIndex_heal, -1, 0, 5, 0.5, 5.0, 1.0, color, 0, 0);
 	   			TE_SendToAll();
 	   			for (int target = 1; target <= MaxClients; target++)
 				{
 					if (IsValidClient(target) && IsPlayerAlive(target) && GetClientTeam(target) == view_as<int>(TFTeam_Red) && TeutonType[target] == 0)
 					{
 						GetClientAbsOrigin(target, client_pos);
-						if (GetVectorDistance(powerup_pos, client_pos, true) <= 90000)
+						if (GetVectorDistance(powerup_pos, client_pos, true) <= (500.0 * 500.0))
 						{
 							EmitSoundToClient(target, SOUND_ARMOR_BEAM, target, _, 90, _, 1.0);
 							EmitSoundToClient(target, SOUND_ARMOR_BEAM, target, _, 90, _, 1.0);
@@ -375,7 +375,6 @@ public void PlaceableTempomaryHealingGrenade(int client)
 			npc.m_bThisEntityIgnored = true;
 			
 			float Healing_Amount = 10.0;
-			
 			Healing_Amount *= Attributes_GetOnPlayer(client, 8, true, true);
 			
 			f_HealDelay[entity] = GetGameTime() + 1.0;
@@ -386,7 +385,7 @@ public void PlaceableTempomaryHealingGrenade(int client)
 			DataPack pack;
 			CreateDataTimer(0.1, Timer_Detect_Player_Near_Healing_Grenade, pack, TIMER_FLAG_NO_MAPCHANGE|TIMER_REPEAT);
 			pack.WriteCell(EntIndexToEntRef(entity));
-			pack.WriteCell(Healing_Amount);	
+			pack.WriteFloat(Healing_Amount);	
 			pack.WriteCell(GetClientUserId(client));
 		}
 	}
@@ -409,7 +408,7 @@ public Action Timer_Detect_Player_Near_Healing_Grenade(Handle timer, DataPack pa
 {
 	pack.Reset();
 	int entity = EntRefToEntIndex(pack.ReadCell());
-	float Healing_Amount = pack.ReadCell();
+	float Healing_Amount = pack.ReadFloat();
 	int client = GetClientOfUserId(pack.ReadCell());
 	if(IsValidEntity(entity) && entity>MaxClients)
 	{
@@ -428,14 +427,14 @@ public Action Timer_Detect_Player_Near_Healing_Grenade(Handle timer, DataPack pa
 				color[2] = 0;
 				color[3] = 255;
 		
-				TE_SetupBeamRingPoint(powerup_pos, 10.0, 500.0, g_BeamIndex_heal, -1, 0, 5, 0.5, 5.0, 1.0, color, 0, 0);
+				TE_SetupBeamRingPoint(powerup_pos, 10.0, 500.0 * 2.0, g_BeamIndex_heal, -1, 0, 5, 0.5, 5.0, 1.0, color, 0, 0);
 	   			TE_SendToAll();
 	   			for (int target = 1; target <= MaxClients; target++)
 				{
 					if (IsValidClient(target) && IsPlayerAlive(target) && GetClientTeam(target) == view_as<int>(TFTeam_Red) && TeutonType[target] == 0)
 					{
 						GetClientAbsOrigin(target, client_pos);
-						if (GetVectorDistance(powerup_pos, client_pos, true) <= 90000)
+						if (GetVectorDistance(powerup_pos, client_pos, true) <= (500.0 * 500.0))
 						{
 							if(dieingstate[target] > 0)
 							{
@@ -457,9 +456,9 @@ public Action Timer_Detect_Player_Near_Healing_Grenade(Handle timer, DataPack pa
 							}
 							else
 							{
-								if(f_TimeUntillNormalHeal[target] < GetGameTime())
+								if(f_TimeUntillNormalHeal[target] > GetGameTime())
 								{
-									Healing_Amount *= 0.25;
+									Healing_Amount *= 0.5;
 								}
 								if(Healing_Amount < 10.0)
 								{
@@ -659,13 +658,12 @@ public void GearTesting(int client)
 public Action QuantumActivate(Handle cut_timer, int ref)
 {
 	int client = EntRefToEntIndex(ref);
-	float startPosition[3];
-	GetClientAbsOrigin(client, startPosition);
-
 	if(IsValidClient(client))
 	{
 		if(TeutonType[client] == TEUTON_NONE && dieingstate[client] == 0 && IsPlayerAlive(client))
 		{
+			float startPosition[3];
+			GetClientAbsOrigin(client, startPosition);
 			i_HealthBeforeSuit[client] = GetClientHealth(client);
 
 			i_ClientHasCustomGearEquipped[client] = true;
@@ -721,9 +719,7 @@ public Action QuantumDeactivate(Handle cut_timer, int ref)
 
 		i_HealthBeforeSuit[client] = 0;
 	//	SetEntityMoveType(client, MOVETYPE_WALK);
-
-		Store_RemoveSpecificItem(client, "Quantum Repeater");
-		Store_RemoveSpecificItem(client, "Quantum Nanosaber");
+		UnequipQuantumSet(client);
 		//Remove both just in case.
 		
 		TF2_RegeneratePlayer(client);
@@ -746,6 +742,11 @@ public Action QuantumDeactivate(Handle cut_timer, int ref)
 	return Plugin_Handled;
 }
 
+void UnequipQuantumSet(int client)
+{
+	Store_RemoveSpecificItem(client, "Quantum Repeater");
+	Store_RemoveSpecificItem(client, "Quantum Nanosaber");
+}
 
 public float GetAbilityCooldownM3(int client)
 {
@@ -875,10 +876,10 @@ public Action Timer_Detect_Player_Near_Repair_Grenade(Handle timer, DataPack pac
 				color[2] = 255;
 				color[3] = 255;
 		
-				TE_SetupBeamRingPoint(powerup_pos, 10.0, 500.0, g_BeamIndex_heal, -1, 0, 5, 0.5, 5.0, 1.0, color, 0, 0);
+				TE_SetupBeamRingPoint(powerup_pos, 10.0, 500.0 * 2.0, g_BeamIndex_heal, -1, 0, 5, 0.5, 5.0, 1.0, color, 0, 0);
 	   			TE_SendToAll();
 				bool Repaired_Building = false;
-				float RepairRateBonus = Attributes_FindOnPlayerZR(client, 95); //Sentry attack speed bonus
+				float RepairRateBonus = Attributes_GetOnPlayer(client, 95, true, true);
 				int healing_Amount = RoundToCeil(200.0 * RepairRateBonus);
 				int CurrentMetal = GetAmmo(client, 3);
 
@@ -888,7 +889,7 @@ public Action Timer_Detect_Player_Near_Repair_Grenade(Handle timer, DataPack pac
 					int entity_close = EntRefToEntIndex(i_ObjectsBuilding[entitycount]);
 					if(IsValidEntity(entity_close))
 					{
-						GetEntPropVector(entity_close, Prop_Data, "m_vecAbsOrigin", client_pos);
+						GetEntPropVector(entity_close, Prop_Data, "m_vecOrigin", client_pos);
 						if (GetVectorDistance(powerup_pos, client_pos, true) <= (500.0 * 500.0))
 						{
 							Repaired_Building = true;
@@ -906,7 +907,6 @@ public Action Timer_Detect_Player_Near_Repair_Grenade(Handle timer, DataPack pac
 								int HealthAfter = GetEntProp(entity_close, Prop_Send, "m_iHealth");
 
 								CurrentMetal -= (HealthAfter - HealthBefore) / 5;
-
 							}
 							Resistance_for_building_High[entity_close] = GetGameTime() + 1.1; 
 						}

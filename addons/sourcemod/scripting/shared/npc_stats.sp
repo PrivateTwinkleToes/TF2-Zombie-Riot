@@ -1346,6 +1346,11 @@ methodmap CClotBody < CBaseCombatCharacter
 		speed_for_return = this.m_flSpeed;
 		
 		speed_for_return *= this.GetDebuffPercentage();
+
+		if(!b_IsAlliedNpc[this.index])
+		{
+			speed_for_return *= Zombie_DelayExtraSpeed();
+		}
 		
 		return speed_for_return; 
 	}
@@ -1979,7 +1984,7 @@ methodmap CClotBody < CBaseCombatCharacter
 	int skin = 0,
 	float model_size = 1.0)
 	{
-		int item = CreateEntityByName("prop_dynamic");
+		int item = CreateEntityByName("prop_dynamic_override");
 		DispatchKeyValue(item, "model", model);
 
 		if(model_size == 1.0)
@@ -2183,6 +2188,7 @@ methodmap CClotBody < CBaseCombatCharacter
 			
 			b_ThisEntityIgnored[entity] = true;
 			b_ForceCollisionWithProjectile[entity] = true;
+			i_WandOwner[entity] = this.index;
 
 			SetEntPropFloat(entity, Prop_Send, "m_fadeMinDist", 1600.0);
 			SetEntPropFloat(entity, Prop_Send, "m_fadeMaxDist", 1800.0);
@@ -2306,7 +2312,7 @@ methodmap CClotBody < CBaseCombatCharacter
 			if(rocket_particle[0]) //If it has something, put it in. usually it has one. but if it doesn't base model it remains.
 			{
 				particle = ParticleEffectAt(vecSwingStart, rocket_particle, 0.0); //Inf duartion
-				i_rocket_particle[entity]=particle;
+				i_rocket_particle[entity]= EntIndexToEntRef(particle);
 				TeleportEntity(particle, NULL_VECTOR, vecAngles, NULL_VECTOR);
 				SetParent(entity, particle);	
 				SetEntityRenderMode(entity, RENDER_TRANSCOLOR); //Make it entirely invis.
@@ -4055,7 +4061,7 @@ stock int GetClosestTarget(int entity,
 	 int ingore_client = -1, 
 	 float EntityLocation[3] = {0.0,0.0,0.0},
 	  bool CanSee = false,
-	   float fldistancelimitAllyNPC = 350.0,
+	   float fldistancelimitAllyNPC = 450.0,
 	   bool IgnorePlayers = false,
 	   bool UseVectorDistance = false,
   		float MinimumDistance = 0.0,
@@ -4269,10 +4275,16 @@ void GetClosestTarget_AddTarget(int entity, int type)
 		if (GetClosestTarget_EnemiesToCollect[i] == 0)
 		{
 			GetClosestTarget_EnemiesToCollect[i] = entity;
-			GetClosestTarget_Enemy_Type[i] = type;
-			i = MAXENTITIES; //same as break;
+			GetClosestTarget_Enemy_Type[entity] = type;
+			break; //same as break;
 		}
 	}	
+}
+
+void GetClosestTarget_ResetAllTargets()
+{
+	Zero(GetClosestTarget_EnemiesToCollect);
+	Zero(GetClosestTarget_Enemy_Type);
 }
 
 int GetClosestTarget_Internal(int entity, float fldistancelimit, float fldistancelimitAllyNPC, const float EntityLocation[3], bool UseVectorDistance, float MinimumDistance)
@@ -4334,9 +4346,13 @@ int GetClosestTarget_Internal(int entity, float fldistancelimit, float fldistanc
 					// See if it's the closest nav
 					if(dist == -5.5)
 						dist = area2.GetCostSoFar();
-					
+						
+					if(dist == 0.0)
+						dist = GetVectorDistance(targetPos[a], EntityLocation, false);
+
+
 				//	PrintToChatAll("%f > %f", dist, fldistancelimit);
-					if(GetClosestTarget_Enemy_Type[i] > 2)	// Distance limit
+					if(GetClosestTarget_Enemy_Type[GetClosestTarget_EnemiesToCollect[a]] > 2)	// Distance limit
 					{
 						if(dist > fldistancelimitAllyNPC)
 						{
@@ -4359,8 +4375,8 @@ int GetClosestTarget_Internal(int entity, float fldistancelimit, float fldistanc
 		}
 
 		delete iterator;
-
-		if(closeNav != NULL_AREA)
+		
+		if(closeNav != NULL_AREA)	// Found our closest nav, find the closest enemy on this nav
 		{
 			closeDist = maxDistance * maxDistance;
 			//float minDistance1 = fldistancelimit * fldistancelimit;
@@ -4373,7 +4389,7 @@ int GetClosestTarget_Internal(int entity, float fldistancelimit, float fldistanc
 				
 				if(targetNav[i] != closeNav)	// In this close nav
 					continue;
-				
+
 				float dist = GetVectorDistance(targetPos[i], EntityLocation, true);
 				if(dist > closeDist)	// Closest entity
 					continue;
@@ -4473,7 +4489,7 @@ int GetClosestTarget_Internal(int entity, float fldistancelimit, float fldistanc
 	}
 
 
-
+	GetClosestTarget_ResetAllTargets();
 	return ClosestTarget;
 }
 
@@ -4523,6 +4539,23 @@ stock bool IsSpaceOccupiedWorldOnly(const float pos[3], const float mins[3], con
 	else
 	{
 		hTrace = TR_TraceHullFilterEx(pos, pos, mins, maxs, MASK_NPCSOLID, TraceRayHitWorldOnly, entity);
+	}
+	bool bHit = TR_DidHit(hTrace);
+	ref = TR_GetEntityIndex(hTrace);
+	delete hTrace;
+	return bHit;
+}
+
+stock bool IsSpaceOccupiedWorldandBuildingsOnly(const float pos[3], const float mins[3], const float maxs[3],int entity=-1,int &ref=-1)
+{
+	Handle hTrace;
+	if(b_IsAlliedNpc[entity])
+	{
+		hTrace = TR_TraceHullFilterEx(pos, pos, mins, maxs, MASK_NPCSOLID | MASK_PLAYERSOLID, TraceRayHitWorldAndBuildingsOnly, entity);
+	}
+	else
+	{
+		hTrace = TR_TraceHullFilterEx(pos, pos, mins, maxs, MASK_NPCSOLID, TraceRayHitWorldAndBuildingsOnly, entity);
 	}
 	bool bHit = TR_DidHit(hTrace);
 	ref = TR_GetEntityIndex(hTrace);
@@ -4698,7 +4731,6 @@ public bool TraceRayCanSeeAllySpecific(int entity,int mask,any data)
 	return false;
 }
 
-float f_StuckTextChatNotif[MAXTF2PLAYERS];
 
 public Action Timer_CheckStuckOutsideMap(Handle cut_timer, int ref)
 {
@@ -4885,7 +4917,7 @@ public void NpcBaseThink(int iNPC)
 		}
 		if(!b_DoNotUnStuck[iNPC] && f_CheckIfStuckPlayerDelay[iNPC] < GameTime)
 		{
-			f_CheckIfStuckPlayerDelay[iNPC] = GameTime + 0.25;
+			f_CheckIfStuckPlayerDelay[iNPC] = GameTime + 0.1;
 			//This is a tempomary fix. find a better one for players getting stuck.
 			static float hullcheckmaxs_Player[3];
 			static float hullcheckmins_Player[3];
@@ -4918,95 +4950,19 @@ public void NpcBaseThink(int iNPC)
 			int Hit_player = IsSpaceOccupiedOnlyPlayers(flMyPos, hullcheckmins_Player, hullcheckmaxs_Player, iNPC);
 			if (Hit_player) //The boss will start to merge with player, STOP!
 			{
-				static float flPlayerPos[3];
-				GetEntPropVector(Hit_player, Prop_Data, "m_vecAbsOrigin", flPlayerPos);
-				static float flMyPos_2[3];
-				flMyPos_2[0] = flPlayerPos[0];
-				flMyPos_2[1] = flPlayerPos[1];
-				flMyPos_2[2] = flMyPos[2];
-				
-				if(flPlayerPos[2] > flMyPos_2[2]) //PLAYER IS ABOVE ZOMBIE
-				{
-					flMyPos_2[2] += hullcheckmaxs_Player[2];
-					
-					if(IsValidEntity(Hit_player))
-					{
-						
-						static float hullcheckmaxs_Player_Again[3];
-						static float hullcheckmins_Player_Again[3];
+				Npc_Teleport_Safe(iNPC, flMyPos, hullcheckmins_Player, hullcheckmaxs_Player);
 
-						hullcheckmaxs_Player_Again = view_as<float>( { 24.0, 24.0, 82.0 } );
-						hullcheckmins_Player_Again = view_as<float>( { -24.0, -24.0, 0.0 } );		
-						
-						if(!IsSpaceOccupiedIgnorePlayers(flMyPos_2, hullcheckmins_Player_Again, hullcheckmaxs_Player_Again, Hit_player))
-						{
-							SDKCall_SetLocalOrigin(Hit_player, flMyPos_2);	
-						//	TeleportEntity(entity, f3_LastValidPosition[entity], NULL_VECTOR, { 0.0, 0.0, 0.0 });
-						}
-						else
-						{
-							if(f_StuckTextChatNotif[Hit_player] < GameTime)
-							{
-								f_StuckTextChatNotif[Hit_player] = GameTime + 1.0;
-								PrintToChat(Hit_player, "You are stuck, yet Unstucking you will stuck you again, you will remain in this position so if you kill the npc, you can get free.");
-							}
-						}
-					}		
+				//first recorded instance of getting stuck after 2 seconds of nnot being stuck.
+				if(f_AntiStuckPhaseThroughFirstCheck[Hit_player] < GetGameTime())
+				{
+					f_AntiStuckPhaseThroughFirstCheck[Hit_player] = GetGameTime() + 2.0;
 				}
-				else //PLAYER IS BELOW ZOMBIE
+				else if(f_AntiStuckPhaseThroughFirstCheck[Hit_player] < GetGameTime() + 1.0)
 				{
-					flMyPos_2[0] = flMyPos[0];
-					flMyPos_2[1] = flMyPos[1];
-					flMyPos_2[2] = flMyPos[2];
-					flMyPos_2[2] += 82.0; //Player height.
-					flMyPos_2[2] += 5.0;
+					//if still stuck after 1 second...
+					f_AntiStuckPhaseThrough[Hit_player] = GetGameTime() + 1.0;
+					//give them 2 seconds to unstuck themselves
 					
-					if(IsValidEntity(Hit_player))
-					{
-						static float hullcheckmaxs_Player_Again[3];
-						static float hullcheckmins_Player_Again[3];
-
-						hullcheckmaxs_Player_Again = view_as<float>( { 24.0, 24.0, 82.0 } );
-						hullcheckmins_Player_Again = view_as<float>( { -24.0, -24.0, 0.0 } );		
-
-						if(b_NpcResizedForCrouch[iNPC])
-						{
-							hullcheckmaxs_Player_Again[2] = 41.0;
-						}
-						
-						if(!IsSpaceOccupiedIgnorePlayers(flMyPos_2, hullcheckmins_Player_Again, hullcheckmaxs_Player_Again, iNPC))
-						{
-							SDKCall_SetLocalOrigin(iNPC, flMyPos_2);	
-							TeleportEntity(iNPC, flMyPos_2, NULL_VECTOR, { 0.0, 0.0, 0.0 }); //Reset their speed
-							npc.SetVelocity({ 0.0, 0.0, 0.0 });
-							if(f_NpcHasBeenUnstuckAboveThePlayer[iNPC] > GameTime)
-							{
-#if defined ZR
-								bool wasactuallysawrunner = false;
-								if(b_ThisNpcIsSawrunner[npc.index]) //Code works already good, do this.
-								{
-									wasactuallysawrunner = true;
-								}
-								b_ThisNpcIsSawrunner[npc.index] = true;
-								SDKHooks_TakeDamage(Hit_player, iNPC, iNPC, float(SDKCall_GetMaxHealth(Hit_player) / 8), DMG_DROWN);
-								if(wasactuallysawrunner)
-								{
-									b_ThisNpcIsSawrunner[npc.index] = false;
-								}
-#endif	// ZR
-							}
-							f_NpcHasBeenUnstuckAboveThePlayer[iNPC] = GameTime + 1.0; //Make the npc immortal! This will prevent abuse of stuckspots.
-							//make this work in rpg too.
-						}
-						else
-						{
-							if(f_StuckTextChatNotif[Hit_player] < GameTime)
-							{
-								f_StuckTextChatNotif[Hit_player] = GameTime + 1.0;
-								PrintToChat(Hit_player, "You are stuck, yet Unstucking you will stuck you again, you will remain in this position so if you kill the npc, you can get free.");
-							}
-						}
-					}
 				}
 			}
 			//This is a tempomary fix. find a better one for players getting stuck.
@@ -6842,10 +6798,19 @@ stock int ConnectWithBeam(int iEnt, int iEnt2, int iRed=255, int iGreen=255, int
 
 	SetVariantInt(0);
 	AcceptEntityInput(iBeam, "TouchType");
-	CBaseCombatCharacter(iBeam).SetNextThink(FAR_FUTURE);
-
+	//its delayed by a frame to avoid it not rendering at all.
+//	RequestFrames(ApplyBeamThinkRemoval, 15, EntIndexToEntRef(iBeam));
 
 	return iBeam;
+}
+
+stock void ApplyBeamThinkRemoval(int ref)
+{
+	int EntityBeam = EntRefToEntIndex(ref);
+	if(IsValidEntity(EntityBeam))
+	{
+		CBaseCombatCharacter(EntityBeam).SetNextThink(FAR_FUTURE);
+	}
 }
 
 stock int Create_BeamParent(int parented, float f3_PositionTemp[3] = {0.0,0.0,0.0}, int beam, char[] attachment = "")
@@ -7081,7 +7046,6 @@ public void SetDefaultValuesToZeroNPC(int entity)
 	b_DungeonContracts_35PercentMoreDamage[entity] = false;
 	b_DungeonContracts_25PercentMoreDamage[entity] = false;
 #endif
-	f_NpcHasBeenUnstuckAboveThePlayer[entity] = 0.0;
 	i_NoEntityFoundCount[entity] = 0;
 	f3_CustomMinMaxBoundingBox[entity][0] = 0.0;
 	f3_CustomMinMaxBoundingBox[entity][1] = 0.0;
@@ -7390,7 +7354,7 @@ public void Rocket_Particle_StartTouch(int entity, int target)
 			SDKHooks_TakeDamage(target, owner, inflictor, DamageDeal, DMG_BULLET|DMG_PREVENT_PHYSICS_FORCE, -1);	//acts like a kinetic rocket
 		}
 		
-		int particle = i_rocket_particle[entity];
+		int particle = EntRefToEntIndex(i_rocket_particle[entity]);
 		if(IsValidEntity(particle))
 		{
 			RemoveEntity(particle);
@@ -7398,7 +7362,7 @@ public void Rocket_Particle_StartTouch(int entity, int target)
 	}
 	else
 	{
-		int particle = i_rocket_particle[entity];
+		int particle = EntRefToEntIndex(i_rocket_particle[entity]);
 		//we uhh, missed?
 		if(IsValidEntity(particle))
 		{

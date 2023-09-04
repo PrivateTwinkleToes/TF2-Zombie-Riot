@@ -205,6 +205,7 @@ static int Beam_Glow;
 static float f_MarkerPosition[MAXTF2PLAYERS][3];
 
 static Handle h_Pickup_Building[MAXPLAYERS + 1];
+static float Perk_Machine_Sickness[MAXTF2PLAYERS];
 
 void Building_MapStart()
 {
@@ -247,6 +248,7 @@ void Building_MapStart()
 	PrecacheSound("player/mannpower_invulnerable.wav");
 	Zero(f_VillageRingVectorCooldown);
 	Zero(f_VillageSavingResources);
+	Zero(Perk_Machine_Sickness);
 }
 
 //static int RebelTimerSpawnIn;
@@ -508,7 +510,7 @@ public bool Building_Sentry(int client, int entity)
 	Building_Max_Health[entity] = GetEntProp(entity, Prop_Data, "m_iMaxHealth");
 	Building_cannot_be_repaired[entity] = false;
 	Is_Elevator[entity] = false;
-	Building_Sentry_Cooldown[client] = GetGameTime() + 60.0;
+	Building_Sentry_Cooldown[client] = GetGameTime() + 10.0;
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		Building_Collect_Cooldown[entity][i] = 0.0;
@@ -544,7 +546,7 @@ public bool Building_Railgun(int client, int entity)
 	SetEntPropString(entity, Prop_Data, "m_iName", "zr_railgun");
 	Building_cannot_be_repaired[entity] = false;
 	Is_Elevator[entity] = false;
-	Building_Sentry_Cooldown[client] = GetGameTime() + 60.0;
+	Building_Sentry_Cooldown[client] = GetGameTime() + 10.0;
 	i_PlayerToCustomBuilding[client] = EntIndexToEntRef(entity);
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -583,7 +585,7 @@ public bool Building_Mortar(int client, int entity)
 	SetEntPropString(entity, Prop_Data, "m_iName", "zr_mortar");
 	Building_cannot_be_repaired[entity] = false;
 	Is_Elevator[entity] = false;
-	Building_Sentry_Cooldown[client] = GetGameTime() + 60.0;
+	Building_Sentry_Cooldown[client] = GetGameTime() + 10.0;
 	i_PlayerToCustomBuilding[client] = EntIndexToEntRef(entity);
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -626,7 +628,7 @@ public bool Building_HealingStation(int client, int entity)
 	SetEntPropString(entity, Prop_Data, "m_iName", "zr_healingstation");
 	Building_cannot_be_repaired[entity] = false;
 	Is_Elevator[entity] = false;
-	Building_Sentry_Cooldown[client] = GetGameTime() + 60.0;
+	Building_Sentry_Cooldown[client] = GetGameTime() + 10.0;
 	i_PlayerToCustomBuilding[client] = EntIndexToEntRef(entity);
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -992,6 +994,11 @@ public Action Building_TakeDamage(int entity, int &attacker, int &inflictor, flo
 		damage = 0.0;
 		return Plugin_Handled;
 	}
+	if(f_ClientInvul[entity] > GetGameTime())
+	{
+		damage = 0.0;
+		return Plugin_Handled;
+	}
 	if(Rogue_Mode()) //buildings are refunded alot, so they shouldnt last long.
 	{
 		damage *= 3.0;
@@ -1323,6 +1330,10 @@ public void Building_TakeDamagePost(int entity, int attacker, int inflictor, flo
 		return;
 	}
 	if(RaidBossActive && IsValidEntity(RaidBossActive)) //They are ignored anyways
+	{
+		return;
+	}
+	if(f_ClientInvul[entity] > GetGameTime())
 	{
 		return;
 	}
@@ -2142,7 +2153,7 @@ bool Building_Interact(int client, int entity, bool Is_Reload_Button = false)
 						{
 							i_Healing_station_money_limit[owner][client] += 1;
 							Resupplies_Supplied[owner] += 4;
-							CashSpent[owner] -= 40;
+							GiveCredits(owner, 40, true);
 							SetDefaultHudPosition(owner);
 							SetGlobalTransTarget(owner);
 							ShowSyncHudText(owner,  SyncHud_Notifaction, "%t", "Healing Station Used");
@@ -2199,7 +2210,7 @@ bool Building_Interact(int client, int entity, bool Is_Reload_Button = false)
 										if(!Rogue_Mode() && owner != -1 && owner != client)
 										{
 											Resupplies_Supplied[owner] += 2;
-											CashSpent[owner] -= 20;
+											GiveCredits(owner, 20, true);
 											SetDefaultHudPosition(owner);
 											SetGlobalTransTarget(owner);
 											ShowSyncHudText(owner,  SyncHud_Notifaction, "%t", "Ammo Box Used");
@@ -2235,7 +2246,7 @@ bool Building_Interact(int client, int entity, bool Is_Reload_Button = false)
 										if(!Rogue_Mode() && owner != -1 && owner != client)
 										{
 											Resupplies_Supplied[owner] += 2;
-											CashSpent[owner] -= 20;
+											GiveCredits(owner, 20, true);
 											SetDefaultHudPosition(owner);
 											SetGlobalTransTarget(owner);
 											ShowSyncHudText(owner,  SyncHud_Notifaction, "%t", "Ammo Box Used");
@@ -2260,7 +2271,7 @@ bool Building_Interact(int client, int entity, bool Is_Reload_Button = false)
 										if(!Rogue_Mode() && owner != -1 && owner != client)
 										{
 											Resupplies_Supplied[owner] += 2;
-											CashSpent[owner] -= 20;
+											GiveCredits(owner, 20, true);
 											SetDefaultHudPosition(owner);
 											SetGlobalTransTarget(owner);
 											ShowSyncHudText(owner,  SyncHud_Notifaction, "%t", "Ammo Box Used");
@@ -2282,7 +2293,7 @@ bool Building_Interact(int client, int entity, bool Is_Reload_Button = false)
 										if(!Rogue_Mode() && owner != -1 && owner != client)
 										{
 											Resupplies_Supplied[owner] += 2;
-											CashSpent[owner] -= 20;
+											GiveCredits(owner, 20, true);
 											SetDefaultHudPosition(owner);
 											SetGlobalTransTarget(owner);
 											ShowSyncHudText(owner,  SyncHud_Notifaction, "%t", "Ammo Box Used");
@@ -2304,7 +2315,8 @@ bool Building_Interact(int client, int entity, bool Is_Reload_Button = false)
 										if(!Rogue_Mode() && owner != -1 && owner != client)
 										{
 											Resupplies_Supplied[owner] += 2;
-											CashSpent[owner] -= 20;
+											
+											GiveCredits(owner, 20, true);
 											SetDefaultHudPosition(owner);
 											SetGlobalTransTarget(owner);
 											ShowSyncHudText(owner,  SyncHud_Notifaction, "%t", "Ammo Box Used");
@@ -2326,7 +2338,7 @@ bool Building_Interact(int client, int entity, bool Is_Reload_Button = false)
 										if(!Rogue_Mode() && owner != -1 && owner != client)
 										{
 											Resupplies_Supplied[owner] += 2;
-											CashSpent[owner] -= 20;
+											GiveCredits(owner, 20, true);
 											SetDefaultHudPosition(owner);
 											SetGlobalTransTarget(owner);
 											ShowSyncHudText(owner,  SyncHud_Notifaction, "%t", "Ammo Box Used");
@@ -2348,7 +2360,7 @@ bool Building_Interact(int client, int entity, bool Is_Reload_Button = false)
 										if(!Rogue_Mode() && owner != -1 && owner != client)
 										{
 											Resupplies_Supplied[owner] += 2;
-											CashSpent[owner] -= 20;
+											GiveCredits(owner, 20, true);
 											SetDefaultHudPosition(owner);
 											SetGlobalTransTarget(owner);
 											ShowSyncHudText(owner,  SyncHud_Notifaction, "%t", "Ammo Box Used");
@@ -2374,7 +2386,7 @@ bool Building_Interact(int client, int entity, bool Is_Reload_Button = false)
 											if(!Rogue_Mode() && owner != -1 && owner != client)
 											{
 												Resupplies_Supplied[owner] += 2;
-												CashSpent[owner] -= 20;
+												GiveCredits(owner, 20, true);
 												SetDefaultHudPosition(owner);
 												SetGlobalTransTarget(owner);
 												ShowSyncHudText(owner,  SyncHud_Notifaction, "%t", "Ammo Box Used");
@@ -2431,12 +2443,11 @@ bool Building_Interact(int client, int entity, bool Is_Reload_Button = false)
 
 							ParticleEffectAt(pos, "halloween_boss_axe_hit_sparks", 1.0);
 
-						//	CashSpent[owner] -= 20;
 							if(!Rogue_Mode() && owner != -1 && owner != client)
 							{
 								if(Armor_table_money_limit[owner][client] < 15)
 								{
-									CashSpent[owner] -= 40;
+									GiveCredits(owner, 40, true);
 									Armor_table_money_limit[owner][client] += 1;
 									Resupplies_Supplied[owner] += 4;
 									SetDefaultHudPosition(owner);
@@ -2457,6 +2468,15 @@ bool Building_Interact(int client, int entity, bool Is_Reload_Button = false)
 				}
 				case 5:
 				{
+					if(Perk_Machine_Sickness[client] > GetGameTime())
+					{
+						ClientCommand(client, "playgamesound items/medshotno1.wav");
+						SetDefaultHudPosition(client);
+						SetGlobalTransTarget(client);
+						ShowSyncHudText(client,  SyncHud_Notifaction, "%t", "Perk Machine Sickness", Perk_Machine_Sickness[client] - GetGameTime());	
+					}
+					else
+					{
 						if(Is_Reload_Button)
 						{
 							i_MachineJustClickedOn[client] = EntIndexToEntRef(entity);
@@ -2498,7 +2518,8 @@ bool Building_Interact(int client, int entity, bool Is_Reload_Button = false)
 							SetDefaultHudPosition(client);
 							SetGlobalTransTarget(client);
 							ShowSyncHudText(client,  SyncHud_Notifaction, "%t", "Reload to Interact");				
-						}
+						}		
+					}
 				}
 				case 6:
 				{
@@ -3660,12 +3681,12 @@ public Action MortarFire(Handle timer, int client)
 			
 			float attack_speed;
 			float sentry_range;
-		
-			attack_speed = 1.0 / Attributes_FindOnPlayerZR(client, 343, true, 1.0); //Sentry attack speed bonus
+
+			attack_speed = 1.0 / Attributes_GetOnPlayer(client, 343, true, true); //Sentry attack speed bonus
 				
-			damage = attack_speed * damage * Attributes_FindOnPlayerZR(client, 287, true, 1.0);			//Sentry damage bonus
+			damage = attack_speed * damage * Attributes_GetOnPlayer(client, 287, true, true);			//Sentry damage bonus
 			
-			sentry_range = Attributes_FindOnPlayerZR(client, 344, true, 1.0);			//Sentry Range bonus
+			sentry_range = Attributes_GetOnPlayer(client, 344, true, true);			//Sentry Range bonus
 			
 			float AOE_range = 350.0 * sentry_range;
 			
@@ -3737,13 +3758,13 @@ static void Railgun_Boom(int client)
 
 		float attack_speed;
 
-		attack_speed = 1.0 / Attributes_FindOnPlayerZR(client, 343, true, 1.0); //Sentry attack speed bonus
+		attack_speed = 1.0 / Attributes_GetOnPlayer(client, 343, true, true); //Sentry attack speed bonus
 				
-		Strength = attack_speed * Strength * Attributes_FindOnPlayerZR(client, 287, true, 1.0);			//Sentry damage bonus
+		Strength = attack_speed * Strength * Attributes_GetOnPlayer(client, 287, true, true);			//Sentry damage bonus
 		
 		float sentry_range;
 			
-		sentry_range = Attributes_FindOnPlayerZR(client, 344, true, 1.0);			//Sentry Range bonus
+		sentry_range = Attributes_GetOnPlayer(client, 344, true, true);			//Sentry Range bonus
 					
 		float BEAM_CloseBuildingDPT = Strength;
 		float BEAM_FarBuildingDPT = Strength;
@@ -3887,13 +3908,13 @@ static void Railgun_Boom_Client(int client)
 		Strength *= 40.0;
 		float attack_speed;
 		
-		attack_speed = 1.0 / Attributes_FindOnPlayerZR(client, 343, true, 1.0); //Sentry attack speed bonus
+		attack_speed = 1.0 / Attributes_GetOnPlayer(client, 343, true, true); //Sentry attack speed bonus
 				
-		Strength = attack_speed * Strength * Attributes_FindOnPlayerZR(client, 287, true, 1.0);			//Sentry damage bonus
+		Strength = attack_speed * Strength * Attributes_GetOnPlayer(client, 287, true, true);			//Sentry damage bonus
 		
 		float sentry_range;
 			
-		sentry_range = Attributes_FindOnPlayerZR(client, 344, true, 1.0);			//Sentry Range bonus
+		sentry_range = Attributes_GetOnPlayer(client, 344, true, true);			//Sentry Range bonus
 		
 		float BEAM_CloseBuildingDPT = Strength;
 		float BEAM_FarBuildingDPT = Strength;
@@ -4307,6 +4328,28 @@ public int Building_ConfirmMountedAction(Menu menu, MenuAction action, int clien
 
 public void Do_Perk_Machine_Logic(int owner, int client, int entity, int what_perk)
 {
+	/*
+	float pos1[3];
+	float pos2[3];
+	int MountedBuilding = EntRefToEntIndex(Building_Mounted[owner]); 
+	if(MountedBuilding == entity)
+	{
+		GetEntPropVector(owner, Prop_Data, "m_vecAbsOrigin", pos2);
+	}
+	else
+	{
+		GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", pos2);
+	}
+	GetEntPropVector(client, Prop_Data, "m_vecAbsOrigin", pos1);
+	if(GetVectorDistance(pos1, pos2, true) > (200.0 * 200.0))
+	{
+		ClientCommand(client, "playgamesound items/medshotno1.wav");
+		SetDefaultHudPosition(client);
+		SetGlobalTransTarget(client);
+		ShowSyncHudText(client,  SyncHud_Notifaction, "%t", "Too Far Away");		
+		return;	
+	}
+	*/
 	TF2_StunPlayer(client, 0.0, 0.0, TF_STUNFLAG_SOUND, 0);
 	Building_Collect_Cooldown[entity][client] = GetGameTime() + 40.0;
 	
@@ -4316,9 +4359,9 @@ public void Do_Perk_Machine_Logic(int owner, int client, int entity, int what_pe
 	{
 		if(!Rogue_Mode() && Perk_Machine_money_limit[owner][client] < 10)
 		{
-			CashSpent[owner] -= 80;
-			Perk_Machine_money_limit[owner][client] += 2;
-			Resupplies_Supplied[owner] += 8;
+			GiveCredits(owner, 40, true);
+			Perk_Machine_money_limit[owner][client] += 1;
+			Resupplies_Supplied[owner] += 4;
 			SetDefaultHudPosition(owner);
 			SetGlobalTransTarget(owner);
 			ShowSyncHudText(owner,  SyncHud_Notifaction, "%t", "Perk Machine Used");
@@ -4334,7 +4377,7 @@ public void Do_Perk_Machine_Logic(int owner, int client, int entity, int what_pe
 
 	int particle = ParticleEffectAt(pos, "flamethrower_underwater", 1.0);
 	SetEntPropVector(particle, Prop_Send, "m_angRotation", angles);
-
+	Perk_Machine_Sickness[client] = GetGameTime() + 2.0;
 	SetDefaultHudPosition(client, _, _, _, 5.0);
 	SetGlobalTransTarget(client);
 	ShowSyncHudText(client,  SyncHud_Notifaction, "%t", PerkNames_Recieved[i_CurrentEquippedPerk[client]]);
@@ -4387,7 +4430,7 @@ public bool Building_Village(int client, int entity)
 	SetEntPropString(entity, Prop_Data, "m_iName", "zr_village");
 	Building_cannot_be_repaired[entity] = false;
 	Is_Elevator[entity] = false;
-	Building_Sentry_Cooldown[client] = GetGameTime() + 60.0;
+	Building_Sentry_Cooldown[client] = GetGameTime() + 10.0;
 	i_PlayerToCustomBuilding[client] = EntIndexToEntRef(entity);
 	Building_Collect_Cooldown[entity][0] = 0.0;
 	Barracks_UpdateEntityUpgrades(client, entity, true);
@@ -7530,14 +7573,19 @@ void TeleportBuilding(int entity, const float origin[3] = NULL_VECTOR, const flo
 	int prop1 = EntRefToEntIndex(Building_Hidden_Prop[entity][0]);
 	int prop2 = EntRefToEntIndex(Building_Hidden_Prop[entity][1]);
 
-	TeleportEntity(entity,origin,angles,velocity);
+	float Orgin_2[3];
+	Orgin_2 = origin;
+	SDKCall_SetLocalOrigin(entity, Orgin_2);	
+	TeleportEntity(entity,NULL_VECTOR,angles,velocity);
 	if(IsValidEntity(prop1))
 	{
-		TeleportEntity(prop1,origin,angles,velocity);
+		SDKCall_SetLocalOrigin(prop1, Orgin_2);	
+		TeleportEntity(prop1,NULL_VECTOR,angles,velocity);
 	}
 	if(IsValidEntity(prop2))
 	{
-		TeleportEntity(prop2,origin,angles,velocity);
+		SDKCall_SetLocalOrigin(prop2, Orgin_2);	
+		TeleportEntity(prop2,NULL_VECTOR,angles,velocity);
 	}
 }
 
